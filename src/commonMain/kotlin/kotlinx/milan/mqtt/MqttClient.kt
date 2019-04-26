@@ -1,7 +1,6 @@
-package org.milan.mqtt
+package kotlinx.milan.mqtt
 
 import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 
@@ -30,6 +29,6 @@ class MqttClient(
     }
 
     private fun <R> executeAsync(action: suspend () -> R): Deferred<R> {
-        return GlobalScope.async(Dispatchers.IO) { action() }
+        return GlobalScope.async { action() }
     }
 }
