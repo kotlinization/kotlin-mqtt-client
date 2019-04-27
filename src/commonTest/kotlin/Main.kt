@@ -9,9 +9,10 @@ import kotlinx.milan.mqtt.MqttConnectionConfig
 
 suspend fun main() {
     val client = MqttClient(MqttConnectionConfig("tcp://localhost:1883")) {
-        println(it.message)
+        println("${it.message}. Cause: ${it.cause?.message}")
     }
     val connected = client.connectAsync()
+    println("Connected: $connected")
     println("Connected: $connected")
     println("Broker is connected: ${client.connected}")
     delay(10000)
@@ -19,6 +20,5 @@ suspend fun main() {
     connected.await()
     delay(1000)
     println("Broker is connected: ${client.connected}")
-
-
+    println("Connected: ${connected.await()}")
 }
