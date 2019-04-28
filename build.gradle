@@ -9,6 +9,10 @@ version '0.0.1'
 
 apply plugin: 'maven-publish'
 
+ext {
+    coroutinesVersion = '1.2.1'
+}
+
 kotlin {
     jvm()
 //    js()
@@ -21,7 +25,7 @@ kotlin {
         commonMain {
             dependencies {
                 implementation kotlin('stdlib-common')
-                implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core-common:1.2.1'
+                implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core-common:${coroutinesVersion}"
             }
         }
         commonTest {
@@ -33,7 +37,7 @@ kotlin {
         jvmMain {
             dependencies {
                 implementation kotlin('stdlib-jdk8')
-                implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.2.1'
+                implementation "org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:${coroutinesVersion}"
             }
         }
         jvmTest {

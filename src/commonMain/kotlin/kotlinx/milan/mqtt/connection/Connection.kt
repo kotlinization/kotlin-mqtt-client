@@ -2,7 +2,6 @@ package kotlinx.milan.mqtt.connection
 
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.milan.mqtt.MqttConnectionConfig
 
 internal abstract class Connection {
 
@@ -13,7 +12,7 @@ internal abstract class Connection {
     /**
      * @throws Throwable
      */
-    suspend fun connect() : Boolean {
+    suspend fun connect(): Boolean {
         connectionMutex.withLock {
             if (connected) {
                 return true
@@ -25,6 +24,6 @@ internal abstract class Connection {
     /**
      * @throws Throwable
      */
-    abstract fun establishConnection() : Boolean
+    abstract fun establishConnection(): Boolean
 
 }

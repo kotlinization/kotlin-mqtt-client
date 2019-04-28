@@ -14,9 +14,8 @@ internal class TcpConnection(private val connectionConfig: MqttConnectionConfig)
     override val connected: Boolean
         get() = socketChannel.isConnected
 
-    override fun establishConnection() : Boolean{
+    override fun establishConnection(): Boolean {
         val uri = URI(connectionConfig.serverUri)
-        val socketChanel = SocketChannel.open()
-        return socketChanel.connect(InetSocketAddress(uri.host, uri.port))
+        return socketChannel.connect(InetSocketAddress(uri.host, uri.port))
     }
 }

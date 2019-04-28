@@ -11,7 +11,7 @@ class MqttClient(
 
     private val connection = createConnection(connectionConfig)
 
-    fun connectAsync(): MqttResult<Boolean> {
+    fun connect(): MqttResult<Boolean> {
         return MqttResult {
             try {
                 connection.connect()
