@@ -2,19 +2,19 @@ package kotlinx.milan.mqtt
 
 
 class MqttClient(
-    connectionConfig: MqttConnectionConfig,
+    val connectionConfig: MqttConnectionConfig,
     private val onError: (Throwable) -> Unit = {}
 ) {
 
     val connected: Boolean
         get() = connection.connected
 
-    private val connection = createConnection(connectionConfig)
+    private val connection = createConnection()
 
     fun connect(): MqttResult<Boolean> {
         return MqttResult {
             try {
-                connection.connect()
+                connection.connect(connectionConfig)
             } catch (t: Throwable) {
                 logError("Unable to connect.", t)
                 false

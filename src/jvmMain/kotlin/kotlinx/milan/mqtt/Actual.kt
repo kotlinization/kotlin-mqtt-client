@@ -6,6 +6,4 @@ import kotlinx.milan.mqtt.connection.TcpConnection
 
 internal actual val mqttDispatcher = Dispatchers.IO
 
-internal actual fun createConnection(mqttClientConfig: MqttConnectionConfig): Connection {
-    return TcpConnection(mqttClientConfig)
-}
+internal actual fun createConnection(): Connection = TcpConnection()
