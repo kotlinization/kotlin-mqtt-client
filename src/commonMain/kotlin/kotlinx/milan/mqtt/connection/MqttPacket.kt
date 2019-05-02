@@ -1,41 +1,52 @@
 package kotlinx.milan.mqtt.connection
 
+import addByteList
 import addShort
 import addStringWithLength
 import kotlinx.milan.mqtt.MqttConnectionConfig
 import shl
-import toNonNormativeBytes
+import toEncodedBytes
 import kotlin.experimental.or
 
+internal sealed class MqttPacket {
 
-sealed class MqttPacket {
+    protected abstract val packetType: Byte
 
-    abstract val packetType: Byte
+    protected abstract val variableHeader: List<Byte>
 
-    abstract val variableHeader: List<Byte>
-
-    abstract val payload: List<Byte>
+    protected abstract val payload: List<Byte>
 
     private val remainingLength: List<Byte>
-        get() = (variableHeader.size + payload.size).toNonNormativeBytes()
+        get() = (variableHeader.size + payload.size).toEncodedBytes()
 
-    fun toByteArray(): ByteArray {
+    internal fun getBytes(): List<Byte> {
         val bytes = mutableListOf(packetType shl 4)
         bytes.addAll(remainingLength)
         bytes.addAll(variableHeader)
         bytes.addAll(payload)
-        return bytes.toByteArray()
+        return bytes
     }
 }
 
-class Connect(connectionConfig: MqttConnectionConfig) : MqttPacket() {
+internal class Connect(connectionConfig: MqttConnectionConfig) : MqttPacket() {
 
     override val packetType: Byte = 1
 
     override val variableHeader: List<Byte> by lazy {
         var flags: Byte = 0
         if (connectionConfig.cleanSession) {
-            flags = flags or 2
+            flags = flags or 0b0000_0010
+        }
+        if (connectionConfig.password != null) {
+            flags = flags or 0b0100_0000
+        }
+        if (connectionConfig.username != null) {
+            flags = flags or 0b1000_0000.toByte()
+        }
+        if (connectionConfig.willMessage != null) {
+            flags = flags or 0b0000_0100
+            flags = flags or if (connectionConfig.willMessage.retain) 0b0100_0000 else 0
+            flags = flags or (connectionConfig.willMessage.qos.ordinal.toByte() shl 3)
         }
         mutableListOf<Byte>().apply {
             addStringWithLength("MQTT")
@@ -48,42 +59,13 @@ class Connect(connectionConfig: MqttConnectionConfig) : MqttPacket() {
     override val payload: List<Byte> by lazy {
         mutableListOf<Byte>().apply {
             addStringWithLength(connectionConfig.clientId)
+            connectionConfig.willMessage?.let {
+                addStringWithLength(it.topic)
+                addByteList(it.message)
+            }
+            connectionConfig.username?.let { addStringWithLength(it) }
+            connectionConfig.password?.let { addStringWithLength(it) }
+
         }
     }
-
-//    private val willTopic: String? = null
-//    private val willMessage = ""
-//    private val willRetain: Boolean = false
-//    private val willQos: Byte = 0
-//    private val userName: String? = null
-//    private val password: String? = null
-
-//    fun toByteArrays(): ByteArray {
-//        if (userName != null) {
-//            flags = flags or 80
-//        }
-//        if (password != null) {
-//            flags = flags or 0x40
-//        }
-//        if (willTopic != null && willMessage != null) {
-//            flags = flags or 0x04
-//            if (willRetain) {
-//                flags = flags or 0x20
-//            }
-//            flags = flags or (willQos shl 3 and 0x18)
-//        }\
-//        if (clientId.isNotEmpty()) {
-//            bytes.addStringWithLength(clientId)
-//        }
-//        if (willTopic != null && willMessage != null) {
-//            MessageSupport.writeUTF(os, willTopic)
-//            MessageSupport.writeUTF(os, willMessage)
-//        }
-//        if (!userName.isNullOrBlank()) {
-//            bytes.addStringWithLength(userName)
-//        }
-//        if (!password.isNullOrBlank()) {
-//            bytes.addStringWithLength(password)
-//        }
-//    }
 }

@@ -17,6 +17,6 @@ internal class TcpConnection : Connection() {
     }
 
     override fun writeMessage(mqttPacket: MqttPacket) {
-        socket.getOutputStream().write(mqttPacket.toByteArray())
+        socket.getOutputStream().write(mqttPacket.getBytes().toByteArray())
     }
 }

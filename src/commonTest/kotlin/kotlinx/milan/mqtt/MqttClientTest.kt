@@ -4,7 +4,13 @@ import kotlinx.coroutines.delay
 import kotlin.test.assertTrue
 
 suspend fun main() {
-    val client = MqttClient(MqttConnectionConfig("tcp://localhost:1883", clientId = "test")) {
+    val client = MqttClient(
+        MqttConnectionConfig(
+            "tcp://localhost:1883", clientId = "test",
+            username = "usertest", password = "test",
+            willMessage = MqttMessage("testtopic", "testmessage")
+        )
+    ) {
         println("${it.message}. Cause: ${it.cause?.message}")
     }
     val connected = client.connect()

@@ -2,9 +2,13 @@ import kotlinx.io.ByteBuffer
 import kotlinx.serialization.toUtf8Bytes
 import kotlin.experimental.or
 
-
 internal fun MutableList<Byte>.addShort(short: Short) {
     addAll(short.toByteArray().toTypedArray())
+}
+
+internal fun MutableList<Byte>.addByteList(list: List<Byte>) {
+    addShort(list.size.toShort())
+    addAll(list)
 }
 
 internal fun MutableList<Byte>.addStringWithLength(string: String) {
@@ -25,8 +29,7 @@ internal infix fun Byte.shl(count: Int): Byte {
     return toInt().shl(count).toByte()
 }
 
-
-internal fun Int.toNonNormativeBytes(): List<Byte> {
+internal fun Int.toEncodedBytes(): List<Byte> {
     val bytes = mutableListOf<Byte>()
     var x = this
     do {
