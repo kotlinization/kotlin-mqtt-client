@@ -1,36 +1,13 @@
-package kotlinx.milan.mqtt.connection
+package kotlinx.milan.mqtt.packet
 
 import addByteList
 import addShort
 import addStringWithLength
 import kotlinx.milan.mqtt.MqttConnectionConfig
 import shl
-import toEncodedBytes
 import kotlin.experimental.or
 
-internal sealed class MqttPacket {
-
-    protected abstract val packetType: Byte
-
-    protected abstract val variableHeader: List<Byte>
-
-    protected abstract val payload: List<Byte>
-
-    private val remainingLength: List<Byte>
-        get() = (variableHeader.size + payload.size).toEncodedBytes()
-
-    internal fun getBytes(): List<Byte> {
-        val bytes = mutableListOf(packetType shl 4)
-        bytes.addAll(remainingLength)
-        bytes.addAll(variableHeader)
-        bytes.addAll(payload)
-        return bytes
-    }
-}
-
-internal class Connect(connectionConfig: MqttConnectionConfig) : MqttPacket() {
-
-    override val packetType: Byte = 1
+internal class Connect(connectionConfig: MqttConnectionConfig) : MqttSendingPacket() {
 
     override val variableHeader: List<Byte> by lazy {
         var flags: Byte = 0

@@ -1,5 +1,7 @@
 package kotlinx.milan.mqtt
 
+import kotlinx.io.ByteArrayInputStream
+import toDecodedInt
 import toEncodedBytes
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -16,7 +18,7 @@ internal class ExtensionKtTest {
     }
 
     @Test
-    fun between128and16_383(){
+    fun between128and16_383() {
         var number = 128
         assertEquals(2, number.toEncodedBytes().size)
         assertEquals(0x80.toByte(), number.toEncodedBytes()[0])
@@ -29,7 +31,7 @@ internal class ExtensionKtTest {
     }
 
     @Test
-    fun between16_384and2_097_151(){
+    fun between16_384and2_097_151() {
         var number = 16_384
         assertEquals(3, number.toEncodedBytes().size)
         assertEquals(0x80.toByte(), number.toEncodedBytes()[0])
@@ -41,5 +43,15 @@ internal class ExtensionKtTest {
         assertEquals(0xFF.toByte(), number.toEncodedBytes()[0])
         assertEquals(0xFF.toByte(), number.toEncodedBytes()[1])
         assertEquals(0x7F.toByte(), number.toEncodedBytes()[2])
+    }
+
+    @Test
+    fun encodeDecode() {
+        repeat(1_000_000) { number ->
+            val bytes = number.toEncodedBytes()
+            val stream = ByteArrayInputStream(bytes.toByteArray())
+            val decoded = stream.toDecodedInt()
+            assertEquals(number, decoded)
+        }
     }
 }
