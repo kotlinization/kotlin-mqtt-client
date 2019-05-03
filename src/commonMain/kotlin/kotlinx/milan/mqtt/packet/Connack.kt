@@ -2,7 +2,7 @@ package kotlinx.milan.mqtt.packet
 
 import kotlinx.io.IOException
 
-internal class Connack(bytes: List<Byte>) : MqttReceivingPacket() {
+internal class Connack(bytes: List<Byte>) : MqttReceivingPacket {
 
     private val returnedCode: Int by lazy {
         bytes.getOrNull(1)?.toInt() ?: throw IllegalArgumentException("Bytes must have at least 2 bytes.")

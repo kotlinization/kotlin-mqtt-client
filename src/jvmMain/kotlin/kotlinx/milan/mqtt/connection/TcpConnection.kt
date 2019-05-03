@@ -6,12 +6,9 @@ import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.URI
 
-internal class TcpConnection : Connection() {
+internal class TcpConnection(onConnectionChanged: (Boolean) -> Unit) : Connection(onConnectionChanged) {
 
-    override val connected: Boolean
-        get() = socket.isConnected
-
-    private var socket: Socket = Socket()
+    private var socket = Socket()
 
     override val inputStream: InputStream
         get() = socket.getInputStream()
@@ -21,7 +18,16 @@ internal class TcpConnection : Connection() {
 
     override fun establishConnection(serverUri: String) {
         val uri = URI(serverUri)
+        if (socket.isClosed) {
+            socket = Socket()
+        }
         socket.connect(InetSocketAddress(uri.host, uri.port))
     }
 
+    override fun breakConnection() {
+        outputStream.flush()
+        socket.shutdownInput()
+        socket.shutdownOutput()
+        socket.close()
+    }
 }

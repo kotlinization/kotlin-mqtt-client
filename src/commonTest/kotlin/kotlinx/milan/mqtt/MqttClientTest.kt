@@ -1,27 +1,34 @@
 package kotlinx.milan.mqtt
 
-import kotlinx.coroutines.delay
-import kotlin.test.assertTrue
+import io.mockk.MockKAnnotations
+import io.mockk.impl.annotations.SpyK
+import io.mockk.verify
+import kotlin.test.BeforeTest
+import kotlin.test.Test
 
-suspend fun main() {
-    val client = MqttClient(
-        MqttConnectionConfig(
-            "tcp://localhost:1883", clientId = "test",
-            username = "usertest", password = "test",
-            willMessage = MqttMessage("testtopic", "testmessage")
-        )
-    ) {
-        println("${it.message}. Cause: ${it.cause?.message}")
+class MqttClientTest {
+
+    @SpyK
+    var onConnection: (Boolean) -> Unit = { println("Connection changed: $it") }
+
+    @SpyK
+    var onError: (Throwable) -> Unit = { println("${it.message}. Cause: ${it.cause?.message}") }
+
+    lateinit var connectionConfig: MqttConnectionConfig
+
+    @BeforeTest
+    fun setUp() {
+        MockKAnnotations.init(this)
+        connectionConfig = MqttConnectionConfig("tcp://localhost:1883")
     }
-    val connected = client.connect()
-    println("Connected: $connected")
-    println("Broker is connected: ${client.connected}")
-    delay(10000)
-    println("Broker is connected: ${client.connected}")
-    connected.await()
-    delay(1000)
-    println("Broker is connected: ${client.connected}")
-    println("Connected: ${connected.await()}")
-    println("Broker is connected: ${client.connected}")
-    assertTrue { client.connected }
+
+    @Test
+    fun connectToBroker() = BrokerProcess().withBroker {
+        val client = MqttClient(connectionConfig, onConnection, onError)
+        client.connect()
+        verify(timeout = 10_000) { onConnection(true) }
+        verify(timeout = 60_000, exactly = 0) { onError(any()) }
+    }
+
 }
+

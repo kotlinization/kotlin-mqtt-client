@@ -1,0 +1,8 @@
+package kotlinx.milan.mqtt.packet
+
+internal class Disconnect : MqttSendingPacket() {
+
+    override val variableHeader by lazy { emptyList<Byte>() }
+
+    override val payload by lazy { emptyList<Byte>() }
+}

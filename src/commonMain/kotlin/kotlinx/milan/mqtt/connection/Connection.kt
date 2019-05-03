@@ -1,6 +1,5 @@
 package kotlinx.milan.mqtt.connection
 
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.io.IOException
@@ -8,10 +7,18 @@ import kotlinx.io.InputStream
 import kotlinx.io.OutputStream
 import kotlinx.milan.mqtt.MqttConnectionConfig
 import kotlinx.milan.mqtt.packet.*
+import kotlin.properties.Delegates.observable
 
-internal abstract class Connection {
+internal abstract class Connection(
+    private val onConnectionChanged: (Boolean) -> Unit
+) {
 
-    abstract val connected: Boolean
+    var connected by observable(false) { _, oldValue, newValue ->
+        if (oldValue != newValue) {
+            onConnectionChanged(newValue)
+        }
+    }
+        private set
 
     protected abstract val inputStream: InputStream
 
@@ -23,7 +30,6 @@ internal abstract class Connection {
 
     private val receivingMutex = Mutex()
 
-
     /**
      * @throws Throwable
      */
@@ -33,10 +39,10 @@ internal abstract class Connection {
                 return true
             }
             establishConnection(connectionConfig.serverUri)
-            delay(2000)
             writePacket(Connect(connectionConfig))
             val packet = readPacket() as? Connack ?: throw IOException("Wrong packet received.")
             packet.error?.let { throw it }
+            connected = true
             return true
         }
     }
@@ -44,7 +50,27 @@ internal abstract class Connection {
     /**
      * @throws Throwable
      */
-    abstract fun establishConnection(serverUri: String)
+    suspend fun disconnect(): Boolean {
+        connectionMutex.withLock {
+            if (!connected) {
+                return true
+            }
+            writePacket(Disconnect())
+            breakConnection()
+            connected = false
+            return true
+        }
+    }
+
+    /**
+     * @throws Throwable
+     */
+    protected abstract fun establishConnection(serverUri: String)
+
+    /**
+     * @throws Throwable
+     */
+    protected abstract fun breakConnection()
 
     /**
      * @throws Throwable

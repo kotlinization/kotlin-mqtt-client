@@ -3,7 +3,7 @@ package kotlinx.milan.mqtt.packet
 import shl
 import toEncodedBytes
 
-internal abstract class MqttSendingPacket : MqttPacket() {
+internal abstract class MqttSendingPacket : MqttPacket {
 
     protected abstract val variableHeader: List<Byte>
 
