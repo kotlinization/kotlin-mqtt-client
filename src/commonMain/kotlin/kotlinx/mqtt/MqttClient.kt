@@ -1,4 +1,4 @@
-package kotlinx.milan.mqtt
+package kotlinx.mqtt
 
 
 class MqttClient(

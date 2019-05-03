@@ -24,10 +24,6 @@ internal fun Short.toByteArray(): ByteArray {
     return ByteBuffer.allocate(2).putShort(this).array()
 }
 
-internal fun Int.toByteArray(): ByteArray {
-    return ByteBuffer.allocate(4).putInt(this).array()
-}
-
 internal infix fun Byte.shl(count: Int): Byte {
     return toInt().shl(count).toByte()
 }

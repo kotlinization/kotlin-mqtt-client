@@ -1,4 +1,4 @@
-package kotlinx.milan.mqtt
+package kotlinx.mqtt
 
 data class MqttConnectionConfig(
     val serverUri: String,
@@ -7,5 +7,9 @@ data class MqttConnectionConfig(
     val password: String? = null,
     val cleanSession: Boolean = true,
     val keepAlive: Short = 30,
-    val willMessage: MqttMessage? = null
+    val willMessage: MqttMessage? = null,
+    /**
+     * How much seconds to wait during connecting, 0 means infinite timeout.
+     */
+    val connectionTimeout: Int = 30
 )

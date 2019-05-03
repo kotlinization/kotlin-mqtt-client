@@ -1,4 +1,4 @@
-package kotlinx.milan.mqtt.connection
+package kotlinx.mqtt.connection
 
 import kotlinx.io.InputStream
 import kotlinx.io.OutputStream
@@ -16,12 +16,12 @@ internal class TcpConnection(onConnectionChanged: (Boolean) -> Unit) : Connectio
     override val outputStream: OutputStream
         get() = socket.getOutputStream()
 
-    override fun establishConnection(serverUri: String) {
+    override fun establishConnection(serverUri: String, timeout: Int) {
         val uri = URI(serverUri)
         if (socket.isClosed) {
             socket = Socket()
         }
-        socket.connect(InetSocketAddress(uri.host, uri.port))
+        socket.connect(InetSocketAddress(uri.host, uri.port), timeout)
     }
 
     override fun breakConnection() {

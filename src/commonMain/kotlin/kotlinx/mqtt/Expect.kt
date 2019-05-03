@@ -1,7 +1,7 @@
-package kotlinx.milan.mqtt
+package kotlinx.mqtt
 
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.milan.mqtt.connection.Connection
+import kotlinx.mqtt.connection.Connection
 
 internal expect fun createConnection(onConnectionChanged: (Boolean) -> Unit): Connection
 

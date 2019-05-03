@@ -1,8 +1,8 @@
-package kotlinx.milan.mqtt
+package kotlinx.mqtt
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.milan.mqtt.connection.Connection
-import kotlinx.milan.mqtt.connection.TcpConnection
+import kotlinx.mqtt.connection.Connection
+import kotlinx.mqtt.connection.TcpConnection
 
 internal actual val mqttDispatcher = Dispatchers.IO
 

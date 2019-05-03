@@ -1,12 +1,12 @@
-package kotlinx.milan.mqtt.connection
+package kotlinx.mqtt.connection
 
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.io.IOException
 import kotlinx.io.InputStream
 import kotlinx.io.OutputStream
-import kotlinx.milan.mqtt.MqttConnectionConfig
-import kotlinx.milan.mqtt.packet.*
+import kotlinx.mqtt.MqttConnectionConfig
+import kotlinx.mqtt.packet.*
 import kotlin.properties.Delegates.observable
 
 internal abstract class Connection(
@@ -38,7 +38,7 @@ internal abstract class Connection(
             if (connected) {
                 return true
             }
-            establishConnection(connectionConfig.serverUri)
+            establishConnection(connectionConfig.serverUri, connectionConfig.connectionTimeout * 1000)
             writePacket(Connect(connectionConfig))
             val packet = readPacket() as? Connack ?: throw IOException("Wrong packet received.")
             packet.error?.let { throw it }
@@ -65,7 +65,7 @@ internal abstract class Connection(
     /**
      * @throws Throwable
      */
-    protected abstract fun establishConnection(serverUri: String)
+    protected abstract fun establishConnection(serverUri: String, timeout: Int)
 
     /**
      * @throws Throwable

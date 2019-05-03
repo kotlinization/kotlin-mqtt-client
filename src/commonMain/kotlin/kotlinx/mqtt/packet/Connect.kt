@@ -1,9 +1,9 @@
-package kotlinx.milan.mqtt.packet
+package kotlinx.mqtt.packet
 
 import addByteList
 import addShort
 import addStringWithLength
-import kotlinx.milan.mqtt.MqttConnectionConfig
+import kotlinx.mqtt.MqttConnectionConfig
 import shl
 import kotlin.experimental.or
 

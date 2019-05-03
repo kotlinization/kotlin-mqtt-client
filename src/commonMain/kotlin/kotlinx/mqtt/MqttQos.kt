@@ -1,4 +1,4 @@
-package kotlinx.milan.mqtt
+package kotlinx.mqtt
 
 enum class MqttQos {
     AT_MOST_ONCE,

@@ -1,4 +1,4 @@
-package kotlinx.milan.mqtt.packet
+package kotlinx.mqtt.packet
 
 import kotlinx.io.IOException
 import kotlinx.io.InputStream

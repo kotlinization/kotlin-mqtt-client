@@ -1,4 +1,4 @@
-package kotlinx.milan.mqtt
+package kotlinx.mqtt
 
 import kotlinx.coroutines.delay
 import kotlin.test.assertFalse
