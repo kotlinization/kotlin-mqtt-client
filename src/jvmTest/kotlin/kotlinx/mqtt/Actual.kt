@@ -31,6 +31,7 @@ actual class TmpFile {
         if (!file.createNewFile()) {
             throw IOException("Unable to create new file.")
         }
+        Thread.sleep(10) // await before new file can be created
     }
 
     actual fun write(data: String) {

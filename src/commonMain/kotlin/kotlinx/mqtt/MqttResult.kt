@@ -5,7 +5,10 @@ import kotlinx.coroutines.async
 
 class MqttResult<T> internal constructor(action: suspend () -> T) {
 
-    private val async = GlobalScope.async(mqttDispatcher) { action() }
+    /**
+     * Only to be used for testing.
+     */
+    internal val async = GlobalScope.async(mqttDispatcher) { action() }
 
     override fun toString() = async.toString()
 
