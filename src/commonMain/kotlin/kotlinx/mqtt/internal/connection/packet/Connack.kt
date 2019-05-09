@@ -1,14 +1,14 @@
-package kotlinx.mqtt.packet
+package kotlinx.mqtt.internal.connection.packet
 
 import kotlinx.io.IOException
 
-internal class Connack(bytes: List<Byte>) : MqttReceivingPacket {
+internal class Connack(bytes: List<Byte>) : MqttReceivedPacket {
 
     private val returnedCode: Int by lazy {
         bytes.getOrNull(1)?.toInt() ?: throw IllegalArgumentException("Bytes must have at least 2 bytes.")
     }
 
-    val error: Throwable? by lazy {
+    val error: IOException? by lazy {
         when (returnedCode) {
             0 -> null
             1 -> IOException("The Server does not support the level of the MQTT protocol requested by the Client.")

@@ -1,4 +1,4 @@
-package kotlinx.mqtt.packet
+package kotlinx.mqtt.internal.connection.packet
 
 import kotlinx.io.IOException
 import kotlinx.io.InputStream
@@ -6,9 +6,9 @@ import readBytes
 import toDecodedInt
 import kotlin.reflect.KClass
 
-internal interface MqttReceivingPacket : MqttPacket
+internal interface MqttReceivedPacket : MqttPacket
 
-internal fun InputStream.getPacket(): MqttReceivingPacket {
+internal suspend fun InputStream.getPacket(): MqttReceivedPacket {
     val type = read() shr 4
     val size = toDecodedInt()
     val bytes = readBytes(size)
@@ -16,7 +16,7 @@ internal fun InputStream.getPacket(): MqttReceivingPacket {
     return bytes.createReceivingPacket(kClass)
 }
 
-private fun List<Byte>.createReceivingPacket(kClass: KClass<out MqttPacket>): MqttReceivingPacket {
+private fun List<Byte>.createReceivingPacket(kClass: KClass<out MqttPacket>): MqttReceivedPacket {
     return when (kClass) {
         Connack::class -> Connack(this)
         else -> throw IllegalArgumentException("Unknown class: $kClass")

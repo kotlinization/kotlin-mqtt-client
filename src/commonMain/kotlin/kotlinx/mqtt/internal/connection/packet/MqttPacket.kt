@@ -1,4 +1,4 @@
-package kotlinx.mqtt.packet
+package kotlinx.mqtt.internal.connection.packet
 
 
 internal interface MqttPacket

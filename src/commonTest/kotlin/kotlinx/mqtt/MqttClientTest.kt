@@ -3,12 +3,8 @@ package kotlinx.mqtt
 import io.mockk.MockKAnnotations
 import io.mockk.impl.annotations.SpyK
 import io.mockk.verify
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import kotlinx.coroutines.*
+import kotlin.test.*
 
 class MqttClientTest {
 
@@ -16,9 +12,13 @@ class MqttClientTest {
     var onConnection: (Boolean) -> Unit = { println("Connection changed: $it") }
 
     @SpyK
-    var onError: (Throwable) -> Unit = { println("${it.message}. Cause: ${it.cause?.message}") }
+    var onError: (Throwable) -> Unit = {
+        println("${it.message} Cause: ${it.cause?.message}")
+    }
 
     private lateinit var connectionConfig: MqttConnectionConfig
+
+    private lateinit var client: MqttClient
 
     private val connectTimeout = 10_000L
 
@@ -33,7 +33,7 @@ class MqttClientTest {
     @Test
     @ExperimentalCoroutinesApi
     fun connectToBroker() = withBroker {
-        val client = MqttClient(connectionConfig, onConnection, onError)
+        client = MqttClient(connectionConfig, onConnection, onError)
         val connect = client.connect()
         verify(timeout = connectTimeout) { onConnection(true) }
         assertTrue { client.connected }
@@ -43,7 +43,7 @@ class MqttClientTest {
     @Test
     @ExperimentalCoroutinesApi
     fun multipleConnectionsWithSameClient() = withBroker {
-        val client = MqttClient(connectionConfig, onConnection, onError)
+        client = MqttClient(connectionConfig, onConnection, onError)
         repeat(1_000) {
             assertTrue { client.connect().async.awaitSync() }
         }
@@ -53,7 +53,7 @@ class MqttClientTest {
     @Test
     fun connectToBrokerAnotherPort() = withBroker(port = 12345) {
         connectionConfig = connectionConfig.copy(serverUri = "tcp://localhost:12345")
-        val client = MqttClient(connectionConfig, onConnection, onError)
+        client = MqttClient(connectionConfig, onConnection, onError)
         client.connect()
         verify(timeout = connectTimeout) { onConnection(true) }
     }
@@ -61,7 +61,7 @@ class MqttClientTest {
     @Test
     fun connectToBrokerWithUserPass() = withBroker(username = true) {
         connectionConfig = connectionConfig.copy(username = "user", password = "test")
-        val client = MqttClient(connectionConfig, onConnection, onError)
+        client = MqttClient(connectionConfig, onConnection, onError)
         client.connect()
         verify(timeout = connectTimeout) { onConnection(true) }
     }
@@ -71,7 +71,7 @@ class MqttClientTest {
     @Test
     @ExperimentalCoroutinesApi
     fun disconnectFromBroker() = withBroker {
-        val client = MqttClient(connectionConfig, onConnection, onError)
+        client = MqttClient(connectionConfig, onConnection, onError)
         client.connect()
         verify(timeout = connectTimeout) { onConnection(true) }
         val disconnect = client.disconnect()
@@ -83,7 +83,7 @@ class MqttClientTest {
     @Test
     @ExperimentalCoroutinesApi
     fun multipleDisconnectsFromBroker() = withBroker {
-        val client = MqttClient(connectionConfig, onConnection, onError)
+        client = MqttClient(connectionConfig, onConnection, onError)
         client.connect()
         verify(timeout = connectTimeout) { onConnection(true) }
         repeat(1_000) {
@@ -92,10 +92,16 @@ class MqttClientTest {
         verify(exactly = 1, timeout = connectTimeout) { onConnection(false) }
     }
 
+    @AfterTest
+    @ExperimentalCoroutinesApi
+    fun clearUp() {
+        client.disconnect().async.awaitSync()
+    }
+
 }
 
 @ExperimentalCoroutinesApi
-private fun <T> Deferred<T>.awaitSync(): T {
+fun <T> Deferred<T>.awaitSync(): T {
     while (!isCompleted) {
     }
     return getCompleted()

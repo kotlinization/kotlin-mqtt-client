@@ -1,9 +1,9 @@
-package kotlinx.mqtt.packet
+package kotlinx.mqtt.internal.connection.packet
 
 import shl
 import toEncodedBytes
 
-internal abstract class MqttSendingPacket : MqttPacket {
+internal abstract class MqttSentPacket : MqttPacket {
 
     protected abstract val variableHeader: List<Byte>
 
@@ -15,11 +15,13 @@ internal abstract class MqttSendingPacket : MqttPacket {
     private val packetType: Byte
         get() = reverseTypes[this::class] ?: throw IllegalStateException("Class not found.")
 
-    internal fun pack(): List<Byte> {
+    fun pack(): List<Byte> {
         val bytes = mutableListOf(packetType shl 4)
         bytes.addAll(remainingLength)
         bytes.addAll(variableHeader)
         bytes.addAll(payload)
         return bytes
     }
+
+    abstract fun isResponse(receivedPacket: MqttReceivedPacket): Boolean
 }

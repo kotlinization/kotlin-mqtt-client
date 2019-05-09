@@ -2,6 +2,7 @@ package kotlinx.mqtt
 
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
+import kotlinx.mqtt.internal.mqttDispatcher
 
 class MqttResult<T> internal constructor(action: suspend () -> T) {
 

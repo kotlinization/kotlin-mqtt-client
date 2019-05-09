@@ -1,4 +1,4 @@
-package kotlinx.mqtt.packet
+package kotlinx.mqtt.internal.connection.packet
 
 import addByteList
 import addShort
@@ -7,7 +7,7 @@ import kotlinx.mqtt.MqttConnectionConfig
 import shl
 import kotlin.experimental.or
 
-internal class Connect(connectionConfig: MqttConnectionConfig) : MqttSendingPacket() {
+internal class Connect(connectionConfig: MqttConnectionConfig) : MqttSentPacket() {
 
     override val variableHeader: List<Byte> by lazy {
         var flags: Byte = 0
@@ -44,5 +44,9 @@ internal class Connect(connectionConfig: MqttConnectionConfig) : MqttSendingPack
             connectionConfig.password?.let { addStringWithLength(it) }
 
         }
+    }
+
+    override fun isResponse(receivedPacket: MqttReceivedPacket): Boolean {
+        return receivedPacket is Connack
     }
 }

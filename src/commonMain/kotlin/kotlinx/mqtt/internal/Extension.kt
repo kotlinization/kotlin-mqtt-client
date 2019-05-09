@@ -1,3 +1,4 @@
+import kotlinx.coroutines.delay
 import kotlinx.io.ByteBuffer
 import kotlinx.io.IOException
 import kotlinx.io.InputStream
@@ -46,11 +47,11 @@ private const val STOP = 0.toByte()
 /**
  * @throws Throwable
  */
-internal fun InputStream.toDecodedInt(): Int {
+internal suspend fun InputStream.toDecodedInt(): Int {
     var multiplier = 1
     var value = 0
     do {
-        val encodedByte = read().toByte()
+        val encodedByte = readBytes(1).first()
         value += (encodedByte and 127) * multiplier
         multiplier *= 128
         if (multiplier > 128 * 128 * 128) {
@@ -63,11 +64,15 @@ internal fun InputStream.toDecodedInt(): Int {
 /**
  * @throws Throwable
  */
-internal fun InputStream.readBytes(size: Int): List<Byte> {
+internal suspend fun InputStream.readBytes(size: Int): List<Byte> {
     return mutableListOf<Byte>().apply {
-        repeat(size) {
-            val byte = read().takeIf { it != -1 }?.toByte() ?: throw IOException("End of stream reached.")
-            add(byte)
+        while (this.size < size) {
+            val read = read()
+            if (read == -1) {
+                delay(10)
+            } else {
+                add(read.toByte())
+            }
         }
     }
 }
