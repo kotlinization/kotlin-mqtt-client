@@ -3,7 +3,7 @@ package kotlinx.mqtt
 import io.mockk.MockKAnnotations
 import io.mockk.impl.annotations.SpyK
 import io.mockk.verify
-import kotlinx.coroutines.*
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlin.test.*
 
 class MqttClientTest {
@@ -97,12 +97,4 @@ class MqttClientTest {
     fun clearUp() {
         client.disconnect().async.awaitSync()
     }
-
-}
-
-@ExperimentalCoroutinesApi
-fun <T> Deferred<T>.awaitSync(): T {
-    while (!isCompleted) {
-    }
-    return getCompleted()
 }

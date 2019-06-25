@@ -10,7 +10,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 
-internal class ExtensionKtTest {
+class ExtensionKtTest {
 
     @Test
     fun smallerThan128() {

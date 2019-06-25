@@ -87,14 +87,16 @@ internal abstract class Connection(
     private fun startReceiving() {
         stopReceiving()
         receiving = GlobalScope.launch(mqttDispatcher) {
-            packetTracker.runCatching {
-                while (true) {
-                    readPacket()
-                }
-            }.onFailure {
-                if (connected) {
-                    onError(Exception("Error while reading package.", it))
-                    disconnect()
+            launch(mqttDispatcher) {
+                packetTracker.runCatching {
+                    while (true) {
+                        readPacket()
+                    }
+                }.onFailure {
+                    if (connected) {
+                        onError(Exception("Error while reading package.", it))
+                        disconnect()
+                    }
                 }
             }
         }

@@ -12,7 +12,6 @@ import kotlinx.mqtt.internal.mqttDispatcher
 
 internal class PacketTracker(private val connection: Connection) {
 
-
     private val sendingMutex = Mutex()
 
     private val receivingMutex = Mutex()
