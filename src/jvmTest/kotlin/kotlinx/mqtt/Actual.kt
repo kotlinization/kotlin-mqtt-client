@@ -1,5 +1,6 @@
 package kotlinx.mqtt
 
+import kotlinx.coroutines.runBlocking
 import kotlinx.io.IOException
 import java.io.File
 import java.lang.System.currentTimeMillis
@@ -42,5 +43,11 @@ actual class TmpFile {
 
     actual fun delete() {
         file.delete()
+    }
+}
+
+actual fun blockThread(method: suspend () -> Unit) {
+    runBlocking {
+        method()
     }
 }

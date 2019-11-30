@@ -1,8 +1,6 @@
 package kotlinx.mqtt
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.async
 import kotlinx.io.ByteArrayInputStream
 import toDecodedInt
 import toEncodedBytes
@@ -51,11 +49,13 @@ class ExtensionKtTest {
     @Test
     @ExperimentalCoroutinesApi
     fun encodeDecode() {
-        repeat(1_000_000) { number ->
-            val bytes = number.toEncodedBytes()
-            val stream = ByteArrayInputStream(bytes.toByteArray())
-            val decoded = GlobalScope.async { stream.toDecodedInt() }.awaitSync()
-            assertEquals(number, decoded)
+        blockThread {
+            repeat(1_000_000) { number ->
+                val bytes = number.toEncodedBytes()
+                val stream = ByteArrayInputStream(bytes.toByteArray())
+                val decoded = stream.toDecodedInt()
+                assertEquals(number, decoded)
+            }
         }
     }
 }

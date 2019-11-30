@@ -17,6 +17,9 @@ class LoggerTest {
     @MockK(relaxed = true)
     lateinit var logDebug: (String) -> Unit
 
+    @MockK(relaxed = true)
+    lateinit var logTrace: (String) -> Unit
+
     @BeforeTest
     fun setUp() {
         MockKAnnotations.init(this)
@@ -28,10 +31,12 @@ class LoggerTest {
 
         logger.e { "Error" }
         logger.d { "Debug" }
+        logger.t { "Trace" }
 
         verifySequence {
             logError("Error", null)
             logDebug("Debug")
+            logTrace("Trace")
         }
     }
 
@@ -41,10 +46,12 @@ class LoggerTest {
 
         logger.e { "Error" }
         logger.d { "Debug" }
+        logger.t { "Trace" }
 
         verifySequence {
             logError("Error", null)
             logDebug("Debug")
+            logTrace("Trace")
         }
     }
 
@@ -54,9 +61,11 @@ class LoggerTest {
 
         logger.e { "Error" }
         logger.d { "Debug" }
+        logger.t { "Trace" }
 
         verifySequence {
             logDebug("Debug")
+            logTrace("Trace")
         }
     }
 
@@ -66,9 +75,11 @@ class LoggerTest {
 
         logger.e { "Error" }
         logger.d { "Debug" }
+        logger.t { "Trace" }
 
         verifySequence {
             logDebug("Debug")
+            logTrace("Trace")
         }
     }
 
@@ -78,26 +89,30 @@ class LoggerTest {
 
         logger.e { "Error" }
         logger.d { "Debug" }
+        logger.t { "Trace" }
 
-//        verifySequence {
-//        }
+        verifySequence {
+            logTrace("Trace")
+        }
     }
 
     @AfterTest
     fun clearAndCheck() {
         confirmVerified(logError)
         confirmVerified(logDebug)
+        confirmVerified(logTrace)
     }
 
     private fun createLogger(level: Logger.Level): Logger {
-        return TestingLogger(level, logError, logDebug)
+        return TestingLogger(level, logError, logDebug, logTrace)
     }
 
 
     private class TestingLogger(
         level: Logger.Level,
         private val error: (String, Throwable?) -> Unit,
-        private val debug: (String) -> Unit
+        private val debug: (String) -> Unit,
+        private val trace: (String) -> Unit
     ) : Logger(level) {
 
         override fun logError(message: String, throwable: Throwable?) {
@@ -106,6 +121,10 @@ class LoggerTest {
 
         override fun logDebug(message: String) {
             debug(message)
+        }
+
+        override fun logTrace(message: String) {
+            trace(message)
         }
     }
 }

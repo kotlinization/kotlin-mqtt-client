@@ -8,9 +8,15 @@ abstract class Logger(private val level: Level) {
         }
     }
 
-    fun d(message: () -> String = { "" }) {
+    fun d(message: () -> String) {
         if (level <= Level.DEBUG) {
             logDebug(message())
+        }
+    }
+
+    fun t(message: () -> String) {
+        if (level <= Level.TRACE) {
+            logTrace(message())
         }
     }
 
@@ -18,7 +24,9 @@ abstract class Logger(private val level: Level) {
 
     protected abstract fun logDebug(message: String)
 
-    enum class Level  {
+    protected abstract fun logTrace(message: String)
+
+    enum class Level {
         FATAL,
         ERROR,
         WARNING,

@@ -12,13 +12,13 @@ internal suspend fun InputStream.getPacket(): MqttReceivedPacket {
     val type = read() shr 4
     val size = toDecodedInt()
     val bytes = readBytes(size)
-    val kClass = types[type.toByte()] ?: throw IOException("Unknown type.")
+    val kClass = types[type] ?: throw IOException("Unknown type.")
     return bytes.createReceivingPacket(kClass)
 }
 
 private fun List<Byte>.createReceivingPacket(kClass: KClass<out MqttPacket>): MqttReceivedPacket {
     return when (kClass) {
-        ConnAck::class -> ConnAck(this)
+        ConnAck::class -> createConnAck()
         else -> throw IllegalArgumentException("Unknown class: $kClass")
     }
 }

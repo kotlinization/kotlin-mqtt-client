@@ -13,7 +13,7 @@ import java.net.URI
 
 internal class TcpConnection(
     connectionConfig: MqttConnectionConfig,
-    logger: Logger,
+    logger: Logger?,
     onConnectionChanged: (Boolean) -> Unit
 ) : Connection(connectionConfig, logger, onConnectionChanged) {
 

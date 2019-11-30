@@ -5,7 +5,7 @@ import kotlinx.mqtt.internal.createConnection
 
 class MqttClient(
     val connectionConfig: MqttConnectionConfig,
-    private val logger: Logger,
+    private val logger: Logger?,
     onConnectionChanged: (Boolean) -> Unit = {}
 ) {
 
@@ -18,7 +18,7 @@ class MqttClient(
         try {
             connection.connect()
         } catch (t: Throwable) {
-            logger.e(t) { "Unable to connect." }
+            logger?.e(t) { "Unable to connect." }
             false
         }
     }
@@ -27,7 +27,7 @@ class MqttClient(
         try {
             connection.disconnect()
         } catch (t: Throwable) {
-            logger.e(t) { "Error while disconnecting." }
+            logger?.e(t) { "Error while disconnecting." }
             false
         }
     }

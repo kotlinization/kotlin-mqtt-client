@@ -15,3 +15,5 @@ expect class TmpFile() {
 
     fun delete()
 }
+
+expect fun blockThread(method: suspend () -> Unit)

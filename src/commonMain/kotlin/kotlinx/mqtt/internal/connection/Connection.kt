@@ -1,9 +1,6 @@
 package kotlinx.mqtt.internal.connection
 
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.io.IOException
@@ -19,7 +16,7 @@ import kotlin.properties.Delegates.observable
 
 internal abstract class Connection(
     private val connectionConfig: MqttConnectionConfig,
-    protected val logger: Logger,
+    protected val logger: Logger?,
     private val onConnectionChanged: (Boolean) -> Unit
 ) {
 
@@ -52,11 +49,13 @@ internal abstract class Connection(
             packetTracker.writePacket(Connect(connectionConfig)) { received ->
                 try {
                     val packet = received as? ConnAck ?: throw IOException("Wrong packet received.")
+                    logger?.t { "Packet received: $packet." }
                     packet.error?.let { throw it }
                 } catch (io: IOException) {
-                    logger.e(io)
+                    logger?.e(io)
                 }
             }
+            connected = true
             startReceiving()
             return true
         }
@@ -92,13 +91,11 @@ internal abstract class Connection(
                 packetTracker.runCatching {
                     while (isActive) {
                         val packet = readPacket()
-                        if (packet is ConnAck) {
-                            connected = true
-                        }
+                        logger?.t { "Packet received: $packet." }
                     }
                 }.onFailure {
                     if (connected) {
-                        logger.e(it) { "Error while reading package." }
+                        logger?.e(it) { "Error while reading package." }
                         disconnect()
                     }
                 }

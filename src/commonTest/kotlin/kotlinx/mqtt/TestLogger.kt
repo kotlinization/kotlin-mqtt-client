@@ -9,4 +9,8 @@ class TestLogger() : Logger(Level.TRACE) {
     override fun logDebug(message: String) {
         println("D: $message")
     }
+
+    override fun logTrace(message: String) {
+        println("T: $message")
+    }
 }

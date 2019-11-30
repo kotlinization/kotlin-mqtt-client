@@ -4,6 +4,7 @@ import io.mockk.MockKAnnotations
 import io.mockk.impl.annotations.SpyK
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlin.test.*
 
 class MqttClientTest {
@@ -35,7 +36,7 @@ class MqttClientTest {
         val connect = client.connect()
         verify(timeout = connectTimeout) { onConnection(true) }
         assertTrue { client.connected }
-        assertTrue { connect.async.awaitSync() }
+        assertTrue(connect.await())
     }
 
     @Test
@@ -43,7 +44,7 @@ class MqttClientTest {
     fun multipleConnectionsWithSameClient() = withBroker {
         client = MqttClient(connectionConfig, logger, onConnection)
         repeat(1_000) {
-            assertTrue { client.connect().async.awaitSync() }
+            assertTrue(client.connect().await())
         }
         verify(exactly = 1, timeout = connectTimeout) { onConnection(true) }
     }
@@ -75,7 +76,7 @@ class MqttClientTest {
         val disconnect = client.disconnect()
         verify(timeout = connectTimeout) { onConnection(false) }
         assertFalse { client.connected }
-        assertTrue { disconnect.async.awaitSync() }
+        assertTrue(disconnect.await())
     }
 
     @Test
@@ -85,7 +86,7 @@ class MqttClientTest {
         client.connect()
         verify(timeout = connectTimeout) { onConnection(true) }
         repeat(1_000) {
-            assertTrue { client.disconnect().async.awaitSync() }
+            assertTrue(client.disconnect().await())
         }
         verify(exactly = 1, timeout = connectTimeout) { onConnection(false) }
     }
@@ -93,6 +94,9 @@ class MqttClientTest {
     @AfterTest
     @ExperimentalCoroutinesApi
     fun clearUp() {
-        client.disconnect().async.awaitSync()
+        blockThread {
+            client.disconnect().await()
+            delay(500)
+        }
     }
 }

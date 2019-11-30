@@ -1,6 +1,5 @@
 package kotlinx.mqtt
 
-import kotlinx.serialization.toUtf8Bytes
 
 data class MqttMessage(
     val topic: String,
@@ -8,6 +7,8 @@ data class MqttMessage(
     val qos: MqttQos = MqttQos.AT_MOST_ONCE,
     val retain: Boolean = false
 ) {
+
+    @UseExperimental(ExperimentalStdlibApi::class)
     constructor(topic: String, message: String, qos: MqttQos = MqttQos.AT_MOST_ONCE, retain: Boolean = false)
-            : this(topic, message.toUtf8Bytes().toList(), qos, retain)
+            : this(topic, message.encodeToByteArray().toList(), qos, retain)
 }

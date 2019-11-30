@@ -7,7 +7,7 @@ import kotlinx.mqtt.internal.connection.Connection
 
 internal expect fun createConnection(
     connectionConfig: MqttConnectionConfig,
-    logger: Logger,
+    logger: Logger?,
     onConnectionChanged: (Boolean) -> Unit
 ): Connection
 
