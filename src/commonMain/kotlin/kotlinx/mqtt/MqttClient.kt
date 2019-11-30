@@ -5,20 +5,20 @@ import kotlinx.mqtt.internal.createConnection
 
 class MqttClient(
     val connectionConfig: MqttConnectionConfig,
-    onConnectionChanged: (Boolean) -> Unit = {},
-    private val onError: (Exception) -> Unit = {}
+    private val logger: Logger,
+    onConnectionChanged: (Boolean) -> Unit = {}
 ) {
 
     val connected: Boolean
         get() = connection.connected
 
-    private val connection by lazy { createConnection(connectionConfig, onConnectionChanged, onError) }
+    private val connection by lazy { createConnection(connectionConfig, logger, onConnectionChanged) }
 
     fun connect() = MqttResult {
         try {
             connection.connect()
         } catch (t: Throwable) {
-            logError("Unable to connect.", t)
+            logger.e(t) { "Unable to connect." }
             false
         }
     }
@@ -27,12 +27,8 @@ class MqttClient(
         try {
             connection.disconnect()
         } catch (t: Throwable) {
-            logError("Error while disconnecting.", t)
+            logger.e(t) { "Error while disconnecting." }
             false
         }
-    }
-
-    private fun logError(message: String, error: Throwable) {
-        onError(Exception(message, error))
     }
 }

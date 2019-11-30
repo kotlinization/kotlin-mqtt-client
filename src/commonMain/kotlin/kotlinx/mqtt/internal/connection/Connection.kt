@@ -2,14 +2,16 @@ package kotlinx.mqtt.internal.connection
 
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.io.IOException
 import kotlinx.io.InputStream
 import kotlinx.io.OutputStream
+import kotlinx.mqtt.Logger
 import kotlinx.mqtt.MqttConnectionConfig
-import kotlinx.mqtt.internal.connection.packet.Connack
+import kotlinx.mqtt.internal.connection.packet.ConnAck
 import kotlinx.mqtt.internal.connection.packet.Connect
 import kotlinx.mqtt.internal.connection.packet.Disconnect
 import kotlinx.mqtt.internal.mqttDispatcher
@@ -17,8 +19,8 @@ import kotlin.properties.Delegates.observable
 
 internal abstract class Connection(
     private val connectionConfig: MqttConnectionConfig,
-    private val onConnectionChanged: (Boolean) -> Unit,
-    private val onError: (Exception) -> Unit
+    protected val logger: Logger,
+    private val onConnectionChanged: (Boolean) -> Unit
 ) {
 
     var connected by observable(false) { _, oldValue, newValue ->
@@ -49,13 +51,12 @@ internal abstract class Connection(
             establishConnection(connectionConfig.serverUri, connectionConfig.connectionTimeout * 1000)
             packetTracker.writePacket(Connect(connectionConfig)) { received ->
                 try {
-                    val packet = received as? Connack ?: throw IOException("Wrong packet received.")
+                    val packet = received as? ConnAck ?: throw IOException("Wrong packet received.")
                     packet.error?.let { throw it }
                 } catch (io: IOException) {
-                    onError(io)
+                    logger.e(io)
                 }
             }
-            connected = true
             startReceiving()
             return true
         }
@@ -89,12 +90,15 @@ internal abstract class Connection(
         receiving = GlobalScope.launch(mqttDispatcher) {
             launch(mqttDispatcher) {
                 packetTracker.runCatching {
-                    while (true) {
-                        readPacket()
+                    while (isActive) {
+                        val packet = readPacket()
+                        if (packet is ConnAck) {
+                            connected = true
+                        }
                     }
                 }.onFailure {
                     if (connected) {
-                        onError(Exception("Error while reading package.", it))
+                        logger.e(it) { "Error while reading package." }
                         disconnect()
                     }
                 }

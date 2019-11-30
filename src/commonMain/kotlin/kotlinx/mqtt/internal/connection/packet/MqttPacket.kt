@@ -5,7 +5,7 @@ internal interface MqttPacket
 
 internal val types = mapOf(
     1.toByte() to Connect::class,
-    2.toByte() to Connack::class,
+    2.toByte() to ConnAck::class,
     14.toByte() to Disconnect::class
 )
 

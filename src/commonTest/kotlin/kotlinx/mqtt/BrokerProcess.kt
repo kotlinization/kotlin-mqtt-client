@@ -1,5 +1,8 @@
 package kotlinx.mqtt
 
+/**
+ * Mosquitto must be installed on device.
+ */
 fun withBroker(username: Boolean = false, port: Int = 1883, block: () -> Unit) {
     val file = TmpFile()
     var passwordFile: TmpFile? = null
@@ -18,6 +21,8 @@ fun withBroker(username: Boolean = false, port: Int = 1883, block: () -> Unit) {
         )
         process.start()
         block()
+    } catch (t: Throwable) {
+        println(t.message)
     } finally {
         process.stop()
         file.delete()

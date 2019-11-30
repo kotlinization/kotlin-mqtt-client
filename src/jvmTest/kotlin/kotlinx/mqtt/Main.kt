@@ -4,6 +4,7 @@ import kotlinx.coroutines.delay
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+
 suspend fun main() {
     val client = MqttClient(
         connectionConfig = MqttConnectionConfig(
@@ -11,11 +12,9 @@ suspend fun main() {
             username = "usertest", password = "test",
             willMessage = MqttMessage("testtopic", "testmessage")
         ),
+        logger = TestLogger(),
         onConnectionChanged = {
             println("Connection changed: $it")
-        },
-        onError = {
-            println("${it.message}. Cause: ${it.cause?.message}")
         }
     )
     repeat(10) {

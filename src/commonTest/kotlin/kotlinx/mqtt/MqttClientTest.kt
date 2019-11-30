@@ -12,9 +12,7 @@ class MqttClientTest {
     var onConnection: (Boolean) -> Unit = { println("Connection changed: $it") }
 
     @SpyK
-    var onError: (Throwable) -> Unit = {
-        println("${it.message} Cause: ${it.cause?.message}")
-    }
+    var logger: Logger = TestLogger()
 
     private lateinit var connectionConfig: MqttConnectionConfig
 
@@ -33,7 +31,7 @@ class MqttClientTest {
     @Test
     @ExperimentalCoroutinesApi
     fun connectToBroker() = withBroker {
-        client = MqttClient(connectionConfig, onConnection, onError)
+        client = MqttClient(connectionConfig, logger, onConnection)
         val connect = client.connect()
         verify(timeout = connectTimeout) { onConnection(true) }
         assertTrue { client.connected }
@@ -43,7 +41,7 @@ class MqttClientTest {
     @Test
     @ExperimentalCoroutinesApi
     fun multipleConnectionsWithSameClient() = withBroker {
-        client = MqttClient(connectionConfig, onConnection, onError)
+        client = MqttClient(connectionConfig, logger, onConnection)
         repeat(1_000) {
             assertTrue { client.connect().async.awaitSync() }
         }
@@ -53,7 +51,7 @@ class MqttClientTest {
     @Test
     fun connectToBrokerAnotherPort() = withBroker(port = 12345) {
         connectionConfig = connectionConfig.copy(serverUri = "tcp://localhost:12345")
-        client = MqttClient(connectionConfig, onConnection, onError)
+        client = MqttClient(connectionConfig, logger, onConnection)
         client.connect()
         verify(timeout = connectTimeout) { onConnection(true) }
     }
@@ -61,7 +59,7 @@ class MqttClientTest {
     @Test
     fun connectToBrokerWithUserPass() = withBroker(username = true) {
         connectionConfig = connectionConfig.copy(username = "user", password = "test")
-        client = MqttClient(connectionConfig, onConnection, onError)
+        client = MqttClient(connectionConfig, logger, onConnection)
         client.connect()
         verify(timeout = connectTimeout) { onConnection(true) }
     }
@@ -71,7 +69,7 @@ class MqttClientTest {
     @Test
     @ExperimentalCoroutinesApi
     fun disconnectFromBroker() = withBroker {
-        client = MqttClient(connectionConfig, onConnection, onError)
+        client = MqttClient(connectionConfig, logger, onConnection)
         client.connect()
         verify(timeout = connectTimeout) { onConnection(true) }
         val disconnect = client.disconnect()
@@ -83,7 +81,7 @@ class MqttClientTest {
     @Test
     @ExperimentalCoroutinesApi
     fun multipleDisconnectsFromBroker() = withBroker {
-        client = MqttClient(connectionConfig, onConnection, onError)
+        client = MqttClient(connectionConfig, logger, onConnection)
         client.connect()
         verify(timeout = connectTimeout) { onConnection(true) }
         repeat(1_000) {

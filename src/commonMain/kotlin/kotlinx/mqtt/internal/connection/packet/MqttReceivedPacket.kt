@@ -18,7 +18,7 @@ internal suspend fun InputStream.getPacket(): MqttReceivedPacket {
 
 private fun List<Byte>.createReceivingPacket(kClass: KClass<out MqttPacket>): MqttReceivedPacket {
     return when (kClass) {
-        Connack::class -> Connack(this)
+        ConnAck::class -> ConnAck(this)
         else -> throw IllegalArgumentException("Unknown class: $kClass")
     }
 }

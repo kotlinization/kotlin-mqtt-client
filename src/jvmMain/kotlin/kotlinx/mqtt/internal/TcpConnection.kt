@@ -4,6 +4,7 @@ import kotlinx.io.ByteArrayInputStream
 import kotlinx.io.ByteArrayOutputStream
 import kotlinx.io.InputStream
 import kotlinx.io.OutputStream
+import kotlinx.mqtt.Logger
 import kotlinx.mqtt.MqttConnectionConfig
 import kotlinx.mqtt.internal.connection.Connection
 import java.net.InetSocketAddress
@@ -12,9 +13,9 @@ import java.net.URI
 
 internal class TcpConnection(
     connectionConfig: MqttConnectionConfig,
-    onConnectionChanged: (Boolean) -> Unit,
-    onError: (Exception) -> Unit
-) : Connection(connectionConfig, onConnectionChanged, onError) {
+    logger: Logger,
+    onConnectionChanged: (Boolean) -> Unit
+) : Connection(connectionConfig, logger, onConnectionChanged) {
 
     private var socket = Socket()
 

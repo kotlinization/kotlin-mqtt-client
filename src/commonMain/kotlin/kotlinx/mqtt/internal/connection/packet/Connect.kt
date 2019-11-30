@@ -47,6 +47,6 @@ internal class Connect(connectionConfig: MqttConnectionConfig) : MqttSentPacket(
     }
 
     override fun isResponse(receivedPacket: MqttReceivedPacket): Boolean {
-        return receivedPacket is Connack
+        return receivedPacket is ConnAck
     }
 }
