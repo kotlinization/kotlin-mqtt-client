@@ -23,8 +23,6 @@ fun withBroker(username: Boolean = false, port: Int = 1883, block: suspend () ->
         blockThread {
             block()
         }
-    } catch (t: Throwable) {
-        println(t.message)
     } finally {
         process.stop()
         file.delete()

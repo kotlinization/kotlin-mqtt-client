@@ -1,5 +1,8 @@
-package kotlinx.mqtt.internal.connection.packet
+package kotlinx.mqtt.internal.connection.packet.sent
 
+import kotlinx.mqtt.internal.connection.packet.MqttPacket
+import kotlinx.mqtt.internal.connection.packet.received.MqttReceivedPacket
+import kotlinx.mqtt.internal.connection.packet.reverseTypes
 import shl
 import toEncodedBytes
 

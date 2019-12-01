@@ -1,13 +1,15 @@
-package kotlinx.mqtt.internal.connection.packet
+package kotlinx.mqtt.internal.connection.packet.sent
 
 import addByteList
 import addShort
 import addStringWithLength
 import kotlinx.mqtt.MqttConnectionConfig
+import kotlinx.mqtt.internal.connection.packet.received.ConnAck
+import kotlinx.mqtt.internal.connection.packet.received.MqttReceivedPacket
 import shl
 import kotlin.experimental.or
 
-internal class Connect(connectionConfig: MqttConnectionConfig) : MqttSentPacket() {
+internal class Connect(private val connectionConfig: MqttConnectionConfig) : MqttSentPacket() {
 
     override val variableHeader: List<Byte> by lazy {
         var flags: Byte = 0
@@ -48,5 +50,9 @@ internal class Connect(connectionConfig: MqttConnectionConfig) : MqttSentPacket(
 
     override fun isResponse(receivedPacket: MqttReceivedPacket): Boolean {
         return receivedPacket is ConnAck
+    }
+
+    override fun toString(): String {
+        return "Connect(connectionConfig=$connectionConfig)"
     }
 }

@@ -1,4 +1,4 @@
-package kotlinx.mqtt.internal.connection.packet
+package kotlinx.mqtt.internal.connection.packet.received
 
 import kotlinx.io.IOException
 

@@ -1,4 +1,6 @@
-package kotlinx.mqtt.internal.connection.packet
+package kotlinx.mqtt.internal.connection.packet.sent
+
+import kotlinx.mqtt.internal.connection.packet.received.MqttReceivedPacket
 
 internal class Disconnect : MqttSentPacket() {
 

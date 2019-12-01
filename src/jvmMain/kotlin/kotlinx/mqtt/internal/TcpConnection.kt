@@ -23,11 +23,11 @@ internal class TcpConnection(
 
     override var outputStream: OutputStream = ByteArrayOutputStream(0)
 
-    override fun establishConnection(serverUri: String, timeout: Int) {
+    override fun establishConnection(serverUri: String, timeout: Long) {
         clearConnection()
         val uri = URI(serverUri)
         socket = Socket()
-        socket.connect(InetSocketAddress(uri.host, uri.port), timeout)
+        socket.connect(InetSocketAddress(uri.host, uri.port), timeout.toInt())
         inputStream = socket.getInputStream()
         outputStream = socket.getOutputStream()
     }

@@ -1,62 +1,68 @@
 package kotlinx.mqtt.internal.connection
 
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.Channel.Factory.RENDEZVOUS
+import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.io.IOException
-import kotlinx.mqtt.internal.connection.packet.MqttReceivedPacket
-import kotlinx.mqtt.internal.connection.packet.MqttSentPacket
-import kotlinx.mqtt.internal.connection.packet.getPacket
+import kotlinx.mqtt.Logger
+import kotlinx.mqtt.internal.connection.packet.received.MqttReceivedPacket
+import kotlinx.mqtt.internal.connection.packet.received.getPacket
+import kotlinx.mqtt.internal.connection.packet.sent.MqttSentPacket
 import kotlinx.mqtt.internal.mqttDispatcher
 
-internal class PacketTracker(private val connection: Connection) {
+internal class PacketTracker(private val connection: Connection, private val logger: Logger?) {
 
-    private val sendingMutex = Mutex()
-
-    private val receivingMutex = Mutex()
+    val packets: ReceiveChannel<MqttReceivedPacket>
+        get() = channel
 
     private val packetsMutex = Mutex()
 
     private val sentPackets = mutableListOf<PacketResponse>()
 
+    private val channel: Channel<MqttReceivedPacket> = Channel(capacity = RENDEZVOUS)
+
+    init {
+        receivePackets()
+    }
+
     /**
      * @throws Throwable
      */
     suspend fun writePacket(mqttPacket: MqttSentPacket, onResponse: suspend (MqttReceivedPacket) -> Unit) {
-        sendingMutex.withLock {
+        packetsMutex.withLock {
             connection.outputStream.write(mqttPacket.pack().toByteArray())
-            sentPackets.withLock { add(PacketResponse(mqttPacket, onResponse)) }
+            logger?.t { "Packet written: $mqttPacket." }
+            sentPackets.add(PacketResponse(mqttPacket, onResponse))
         }
     }
 
-    /**
-     * @throws Throwable
-     */
-    suspend fun readPacket(): MqttReceivedPacket {
-        return receivingMutex.withLock { receiving() }
-    }
-
-    /**
-     * @throws Throwable
-     */
-    private suspend fun receiving(): MqttReceivedPacket {
-        while (true) {
-            val packet = connection.inputStream.getPacket()
-            val responses = sentPackets.withLock {
-                filter { it.sentPacket.isResponse(packet) }
+    private fun receivePackets() {
+        GlobalScope.launch {
+            while (isActive) {
+                try {
+                    val packet = connection.inputStream.getPacket()
+                    logger?.t { "Packet received: $packet." }
+                    val responses = packetsMutex.withLock {
+                        sentPackets.filter { it.sentPacket.isResponse(packet) }
+                    }
+                    if (responses.isEmpty()) {
+                        logger?.t { "Adding packet to channel." }
+                        channel.send(packet)
+                    }
+                    val response = responses.singleOrNull() ?: throw IOException("Internal error with packet tracking.")
+                    logger?.t { "Calling packet response." }
+                    GlobalScope.launch(mqttDispatcher) {
+                        response.onResponse(packet)
+                    }
+                } catch (t: Throwable) {
+                    logger?.e(t) { "Error while receiving packet." }
+                }
             }
-            if (responses.isEmpty()) {
-                return packet
-            }
-            val response = responses.singleOrNull() ?: throw IOException("Internal error with packet tracking.")
-            GlobalScope.launch(mqttDispatcher) { response.onResponse(packet) }
-        }
-    }
-
-    private suspend fun <E, R> MutableList<E>.withLock(block: suspend MutableList<E>.() -> R): R {
-        return packetsMutex.withLock {
-            block(this)
         }
     }
 }

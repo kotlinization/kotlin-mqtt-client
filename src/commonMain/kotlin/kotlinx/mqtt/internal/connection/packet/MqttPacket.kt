@@ -1,5 +1,9 @@
 package kotlinx.mqtt.internal.connection.packet
 
+import kotlinx.mqtt.internal.connection.packet.received.ConnAck
+import kotlinx.mqtt.internal.connection.packet.sent.Connect
+import kotlinx.mqtt.internal.connection.packet.sent.Disconnect
+
 
 internal interface MqttPacket
 

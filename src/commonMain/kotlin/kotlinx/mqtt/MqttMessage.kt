@@ -8,7 +8,7 @@ data class MqttMessage(
     val retain: Boolean = false
 ) {
 
-    @UseExperimental(ExperimentalStdlibApi::class)
+    @ExperimentalStdlibApi
     constructor(topic: String, message: String, qos: MqttQos = MqttQos.AT_MOST_ONCE, retain: Boolean = false)
             : this(topic, message.encodeToByteArray().toList(), qos, retain)
 }

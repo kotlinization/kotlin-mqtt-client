@@ -28,7 +28,7 @@ class MqttClient(
             connection.disconnect()
         } catch (t: Throwable) {
             logger?.e(t) { "Error while disconnecting." }
-            false
+            true
         }
     }
 }

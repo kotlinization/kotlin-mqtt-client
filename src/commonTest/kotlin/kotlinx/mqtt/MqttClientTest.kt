@@ -1,16 +1,20 @@
 package kotlinx.mqtt
 
 import io.mockk.MockKAnnotations
+import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.SpyK
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
-import kotlin.test.*
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class MqttClientTest {
 
-    @SpyK
-    var onConnection: (Boolean) -> Unit = { println("Connection changed: $it") }
+    @MockK
+    private lateinit var onConnection: (Boolean) -> Unit
 
     @SpyK
     var logger: Logger = TestLogger()
@@ -24,7 +28,11 @@ class MqttClientTest {
     @BeforeTest
     fun setUp() {
         MockKAnnotations.init(this)
-        connectionConfig = MqttConnectionConfig(serverUri = "tcp://localhost:1883", connectionTimeout = 5)
+        connectionConfig = MqttConnectionConfig(
+            serverUri = "tcp://localhost:1883",
+            connectionTimeout = 5,
+            keepAlive = 3
+        )
     }
 
     // Connecting
@@ -46,7 +54,9 @@ class MqttClientTest {
         repeat(1_000) {
             assertTrue(client.connect().await())
         }
-        verify(exactly = 1, timeout = connectTimeout) { onConnection(true) }
+        verify(exactly = 1, timeout = connectTimeout) {
+            onConnection(true)
+        }
     }
 
     @Test
@@ -91,12 +101,15 @@ class MqttClientTest {
         verify(exactly = 1, timeout = connectTimeout) { onConnection(false) }
     }
 
-    @AfterTest
-    @ExperimentalCoroutinesApi
-    fun clearUp() {
-        blockThread {
-            client.disconnect().await()
-            delay(500)
-        }
+    // Keeping track of connection
+
+    @Test
+    fun keepConnectionActive() = withBroker {
+        client = MqttClient(connectionConfig, logger, onConnection)
+        val connect = client.connect()
+        verify(timeout = connectTimeout) { onConnection(true) }
+
+        delay(10000)
+        assertTrue(client.connected)
     }
 }
