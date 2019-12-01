@@ -5,7 +5,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 
-
 @ExperimentalStdlibApi
 suspend fun main() {
     val client = MqttClient(
@@ -15,19 +14,19 @@ suspend fun main() {
             willMessage = MqttMessage("testtopic", "testmessage")
         ),
         logger = TestLogger(),
-        onConnectionChanged = {
+        onConnectionStatusChanged = {
             println("Connection changed: $it")
         }
     )
     repeat(10) {
         val connected = client.connect()
-        println("Connected: ${connected.await()}")
-        println("Broker is connected: ${client.connected}")
-        assertTrue { client.connected }
-        delay(5000)
-        val disconnect = client.disconnect()
-        println("Disconnected: ${disconnect.await()}")
-        assertFalse { client.connected }
+        println("Connected: $connected")
+//        println("Broker is connected: ${client.connected}")
+//        assertTrue { client.connected }
+//        delay(5000)
+//        val disconnect = client.disconnect()
+//        println("Disconnected: ${disconnect.await()}")
+//        assertFalse { client.connected }
         delay(5000)
     }
 }

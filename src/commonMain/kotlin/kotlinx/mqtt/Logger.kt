@@ -3,19 +3,19 @@ package kotlinx.mqtt
 abstract class Logger(private val level: Level) {
 
     fun e(throwable: Throwable? = null, message: () -> String = { "" }) {
-        if (level <= Level.ERROR) {
+        if (level >= Level.ERROR) {
             logError(message(), throwable)
         }
     }
 
     fun d(message: () -> String) {
-        if (level <= Level.DEBUG) {
+        if (level >= Level.DEBUG) {
             logDebug(message())
         }
     }
 
     fun t(message: () -> String) {
-        if (level <= Level.TRACE) {
+        if (level >= Level.TRACE) {
             logTrace(message())
         }
     }

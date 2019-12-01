@@ -51,3 +51,6 @@ actual fun blockThread(method: suspend () -> Unit) {
         method()
     }
 }
+
+actual val millies: Long
+    get() = System.currentTimeMillis()

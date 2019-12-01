@@ -2,7 +2,11 @@ package kotlinx.mqtt.internal.connection.packet.received
 
 import kotlinx.io.IOException
 
-internal data class ConnAck(private val returnedCode: Int) : MqttReceivedPacket {
+internal class ConnAck(bytes: List<Byte>) : MqttReceivedPacket {
+
+    private val returnedCode: Int by lazy {
+        bytes.getOrNull(1)?.toInt() ?: throw IllegalArgumentException("Bytes must have at least 2 bytes.")
+    }
 
     val error: IOException? by lazy {
         when (returnedCode) {
@@ -15,9 +19,8 @@ internal data class ConnAck(private val returnedCode: Int) : MqttReceivedPacket 
             else -> IOException("Unknown error.")
         }
     }
-}
 
-internal fun List<Byte>.createConnAck(): ConnAck {
-    val code = getOrNull(1)?.toInt() ?: throw IllegalArgumentException("Bytes must have at least 2 bytes.")
-    return ConnAck(code)
+    override fun toString(): String {
+        return "ConnAck(returnedCode=$returnedCode)"
+    }
 }

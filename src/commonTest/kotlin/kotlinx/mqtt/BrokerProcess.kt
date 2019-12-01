@@ -1,5 +1,7 @@
 package kotlinx.mqtt
 
+import kotlinx.coroutines.delay
+
 /**
  * Mosquitto must be installed on device.
  */
@@ -27,6 +29,9 @@ fun withBroker(username: Boolean = false, port: Int = 1883, block: suspend () ->
         process.stop()
         file.delete()
         passwordFile?.delete()
+        blockThread {
+            delay(100)
+        }
     }
 }
 

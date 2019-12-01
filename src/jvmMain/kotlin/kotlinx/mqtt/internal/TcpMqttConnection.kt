@@ -6,16 +6,16 @@ import kotlinx.io.InputStream
 import kotlinx.io.OutputStream
 import kotlinx.mqtt.Logger
 import kotlinx.mqtt.MqttConnectionConfig
-import kotlinx.mqtt.internal.connection.Connection
+import kotlinx.mqtt.internal.connection.MqttConnection
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.URI
 
-internal class TcpConnection(
+internal class TcpMqttConnection(
     connectionConfig: MqttConnectionConfig,
     logger: Logger?,
     onConnectionChanged: (Boolean) -> Unit
-) : Connection(connectionConfig, logger, onConnectionChanged) {
+) : MqttConnection(connectionConfig, logger, onConnectionChanged) {
 
     private var socket = Socket()
 
@@ -23,7 +23,7 @@ internal class TcpConnection(
 
     override var outputStream: OutputStream = ByteArrayOutputStream(0)
 
-    override fun establishConnection(serverUri: String, timeout: Long) {
+    override suspend fun establishConnection(serverUri: String, timeout: Long) {
         clearConnection()
         val uri = URI(serverUri)
         socket = Socket()

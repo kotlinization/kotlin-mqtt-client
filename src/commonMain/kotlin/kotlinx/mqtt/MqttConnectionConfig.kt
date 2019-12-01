@@ -12,4 +12,7 @@ data class MqttConnectionConfig(
      * How much seconds to wait during connecting, 0 means infinite timeout.
      */
     val connectionTimeout: Int = 30
-)
+) {
+
+    internal val connectionTimeoutMilliseconds by lazy { connectionTimeout * 1000L }
+}

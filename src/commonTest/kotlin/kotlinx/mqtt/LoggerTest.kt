@@ -33,11 +33,8 @@ class LoggerTest {
         logger.d { "Debug" }
         logger.t { "Trace" }
 
-        verifySequence {
-            logError("Error", null)
-            logDebug("Debug")
-            logTrace("Trace")
-        }
+//        verifySequence {
+//        }
     }
 
     @Test
@@ -50,8 +47,6 @@ class LoggerTest {
 
         verifySequence {
             logError("Error", null)
-            logDebug("Debug")
-            logTrace("Trace")
         }
     }
 
@@ -64,8 +59,7 @@ class LoggerTest {
         logger.t { "Trace" }
 
         verifySequence {
-            logDebug("Debug")
-            logTrace("Trace")
+            logError("Error", null)
         }
     }
 
@@ -78,8 +72,8 @@ class LoggerTest {
         logger.t { "Trace" }
 
         verifySequence {
+            logError("Error", null)
             logDebug("Debug")
-            logTrace("Trace")
         }
     }
 
@@ -92,6 +86,8 @@ class LoggerTest {
         logger.t { "Trace" }
 
         verifySequence {
+            logError("Error", null)
+            logDebug("Debug")
             logTrace("Trace")
         }
     }

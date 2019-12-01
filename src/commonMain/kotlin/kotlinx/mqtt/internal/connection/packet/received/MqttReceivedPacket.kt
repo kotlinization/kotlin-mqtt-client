@@ -15,7 +15,8 @@ internal suspend fun InputStream.getPacket(): MqttReceivedPacket {
     val bytes = readBytes(size)
     val kClass = types[type] ?: throw IOException("Unknown type.")
     return when (kClass) {
-        ConnAck::class -> bytes.createConnAck()
+        ConnAck::class -> ConnAck(bytes)
+        PingResp::class -> PingResp()
         else -> throw IllegalArgumentException("Unknown class: $kClass")
     }
 }

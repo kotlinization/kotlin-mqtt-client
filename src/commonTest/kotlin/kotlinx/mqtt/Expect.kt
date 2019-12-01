@@ -17,3 +17,5 @@ expect class TmpFile() {
 }
 
 expect fun blockThread(method: suspend () -> Unit)
+
+expect val millies: Long
