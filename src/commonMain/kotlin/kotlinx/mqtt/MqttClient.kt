@@ -9,6 +9,7 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.io.IOException
 import kotlinx.mqtt.MqttConnectionStatus.*
 import kotlinx.mqtt.internal.connection.PacketTracker
+import kotlinx.mqtt.internal.connection.packet.Publish
 import kotlinx.mqtt.internal.connection.packet.received.ConnAck
 import kotlinx.mqtt.internal.connection.packet.sent.Connect
 import kotlinx.mqtt.internal.connection.packet.sent.Disconnect
@@ -109,6 +110,16 @@ class MqttClient(
             }
         } catch (t: Throwable) {
             logger?.e(t) { "Error while disconnecting." }
+        }
+    }
+
+    suspend fun publish(mqttMessage: MqttMessage) {
+        try {
+            packetTracker.writePacket(Publish(mqttMessage)) {
+
+            }
+        } catch (t: Throwable) {
+            logger?.e(t) { "Unable to publish message." }
         }
     }
 

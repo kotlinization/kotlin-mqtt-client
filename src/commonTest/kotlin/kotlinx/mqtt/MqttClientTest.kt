@@ -174,4 +174,26 @@ internal class MqttClientTest {
 
         client.disconnect()
     }
+
+    // Publishing
+
+    @Test
+    @ExperimentalStdlibApi
+    fun publishQoS0() = withBroker {
+        client = MqttClient(connectionConfig, logger, onConnection)
+        client.connect()
+        client.publish(MqttMessage("test", "Hello"))
+        client.disconnect()
+    }
+
+    @Test
+    @ExperimentalStdlibApi
+    fun publishMultipleQoS0() = withBroker {
+        client = MqttClient(connectionConfig, logger, onConnection)
+        client.connect()
+        repeat(100) {
+            client.publish(MqttMessage("test", it.toString()))
+        }
+        client.disconnect()
+    }
 }

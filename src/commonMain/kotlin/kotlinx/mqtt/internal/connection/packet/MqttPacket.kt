@@ -12,6 +12,7 @@ internal interface MqttPacket
 internal val types = mapOf(
     1 to Connect::class,
     2 to ConnAck::class,
+    3 to Publish::class,
     12 to PingReq::class,
     13 to PingResp::class,
     14 to Disconnect::class

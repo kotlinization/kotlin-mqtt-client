@@ -11,6 +11,8 @@ import kotlin.experimental.or
 
 internal class Connect(private val connectionConfig: MqttConnectionConfig) : MqttSentPacket() {
 
+    override val fixedHeader: Byte = 0
+
     override val variableHeader: List<Byte> by lazy {
         var flags: Byte = 0
         if (connectionConfig.cleanSession) {

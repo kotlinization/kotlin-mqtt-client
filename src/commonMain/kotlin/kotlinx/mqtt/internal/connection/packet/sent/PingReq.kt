@@ -5,6 +5,8 @@ import kotlinx.mqtt.internal.connection.packet.received.PingResp
 
 internal class PingReq : MqttSentPacket() {
 
+    override val fixedHeader: Byte = 0
+
     override val variableHeader by lazy { emptyList<Byte>() }
 
     override val payload by lazy { emptyList<Byte>() }
