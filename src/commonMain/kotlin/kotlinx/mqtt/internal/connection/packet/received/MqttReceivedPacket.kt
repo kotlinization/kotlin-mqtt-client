@@ -6,6 +6,7 @@ import kotlinx.mqtt.internal.connection.packet.MqttPacket
 import kotlinx.mqtt.internal.connection.packet.types
 import readBytes
 import toDecodedInt
+import toShort
 
 internal interface MqttReceivedPacket : MqttPacket
 
@@ -17,6 +18,7 @@ internal suspend fun InputStream.getPacket(): MqttReceivedPacket {
     return when (kClass) {
         ConnAck::class -> ConnAck(bytes)
         PingResp::class -> PingResp()
+        PubAck::class -> PubAck(bytes.toShort())
         else -> throw IllegalArgumentException("Unknown class: $kClass")
     }
 }

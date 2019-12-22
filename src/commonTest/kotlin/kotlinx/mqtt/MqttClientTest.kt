@@ -7,6 +7,7 @@ import io.mockk.impl.annotations.SpyK
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import kotlinx.mqtt.MqttQos.AT_LEAST_ONCE
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -41,7 +42,7 @@ internal class MqttClientTest {
     @Test
     @ExperimentalCoroutinesApi
     fun connectToBroker() = withBroker {
-        client = MqttClient(connectionConfig, logger, onConnection)
+        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
         val connect = client.connect()
         verify(timeout = connectTimeout, ordering = Ordering.SEQUENCE) {
             onConnection(MqttConnectionStatus.CONNECTING)
@@ -56,7 +57,7 @@ internal class MqttClientTest {
     @Test
     @ExperimentalCoroutinesApi
     fun connectToBrokerWithoutBroker() = blockThread {
-        client = MqttClient(connectionConfig, logger, onConnection)
+        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
         client.connect()
         verify(timeout = connectTimeout, ordering = Ordering.SEQUENCE) {
             onConnection(MqttConnectionStatus.CONNECTING)
@@ -68,7 +69,7 @@ internal class MqttClientTest {
     @Test
     @ExperimentalCoroutinesApi
     fun multipleConnectionsWithSameClient() = withBroker {
-        client = MqttClient(connectionConfig, logger, onConnection)
+        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
         repeat(1_000) {
             assertTrue(client.connect())
         }
@@ -82,7 +83,7 @@ internal class MqttClientTest {
     @Test
     fun connectToBrokerAnotherPort() = withBroker(port = 12345) {
         connectionConfig = connectionConfig.copy(serverUri = "tcp://localhost:12345")
-        client = MqttClient(connectionConfig, logger, onConnection)
+        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
         client.connect()
         verify(timeout = connectTimeout) {
             onConnection(MqttConnectionStatus.CONNECTED)
@@ -93,7 +94,7 @@ internal class MqttClientTest {
     @Test
     fun connectToBrokerWithUserPass() = withBroker(username = true) {
         connectionConfig = connectionConfig.copy(username = "user", password = "test")
-        client = MqttClient(connectionConfig, logger, onConnection)
+        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
         client.connect()
         verify(timeout = connectTimeout) {
             onConnection(MqttConnectionStatus.CONNECTED)
@@ -104,7 +105,7 @@ internal class MqttClientTest {
     @Test
     fun connectToBrokerWithWrongUserPass() = withBroker(username = true) {
         connectionConfig = connectionConfig.copy(username = "user", password = "wrong")
-        client = MqttClient(connectionConfig, logger, onConnection)
+        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
         client.connect()
         verify(timeout = connectTimeout, ordering = Ordering.SEQUENCE) {
             onConnection(MqttConnectionStatus.CONNECTING)
@@ -118,7 +119,7 @@ internal class MqttClientTest {
     @ExperimentalStdlibApi
     fun connectToBrokerWithWill() = withBroker {
         connectionConfig = connectionConfig.copy(willMessage = MqttMessage("test", "will"))
-        client = MqttClient(connectionConfig, logger, onConnection)
+        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
         client.connect()
         verify(timeout = connectTimeout) {
             onConnection(MqttConnectionStatus.CONNECTED)
@@ -131,7 +132,7 @@ internal class MqttClientTest {
     @Test
     @ExperimentalCoroutinesApi
     fun disconnectFromBroker() = withBroker {
-        client = MqttClient(connectionConfig, logger, onConnection)
+        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
         client.connect()
         verify(timeout = connectTimeout) {
             onConnection(MqttConnectionStatus.CONNECTED)
@@ -146,7 +147,7 @@ internal class MqttClientTest {
     @Test
     @ExperimentalCoroutinesApi
     fun multipleDisconnectsFromBroker() = withBroker {
-        client = MqttClient(connectionConfig, logger, onConnection)
+        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
         client.connect()
         verify(timeout = connectTimeout) {
             onConnection(MqttConnectionStatus.CONNECTED)
@@ -163,7 +164,7 @@ internal class MqttClientTest {
 
     @Test
     fun keepConnectionActive() = withBroker {
-        client = MqttClient(connectionConfig, logger, onConnection)
+        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
         client.connect()
         verify(timeout = connectTimeout) {
             onConnection(MqttConnectionStatus.CONNECTED)
@@ -180,7 +181,7 @@ internal class MqttClientTest {
     @Test
     @ExperimentalStdlibApi
     fun publishQoS0() = withBroker {
-        client = MqttClient(connectionConfig, logger, onConnection)
+        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
         client.connect()
         client.publish(MqttMessage("test", "Hello"))
         client.disconnect()
@@ -189,11 +190,21 @@ internal class MqttClientTest {
     @Test
     @ExperimentalStdlibApi
     fun publishMultipleQoS0() = withBroker {
-        client = MqttClient(connectionConfig, logger, onConnection)
+        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
         client.connect()
-        repeat(100) {
+        repeat(10) {
+            delay(200)
             client.publish(MqttMessage("test", it.toString()))
         }
+        client.disconnect()
+    }
+
+    @Test
+    @ExperimentalStdlibApi
+    fun publishQoS1() = withBroker {
+        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
+        client.connect()
+        client.publish(MqttMessage("test", "Hello", qos = AT_LEAST_ONCE))
         client.disconnect()
     }
 }

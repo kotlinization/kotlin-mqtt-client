@@ -1,14 +1,14 @@
 package kotlinx.mqtt.internal.connection.packet
 
+import addShort
 import addStringWithLength
 import kotlinx.mqtt.MqttMessage
-import kotlinx.mqtt.MqttQos
 import kotlinx.mqtt.internal.connection.packet.received.MqttReceivedPacket
 import kotlinx.mqtt.internal.connection.packet.sent.MqttSentPacket
 import shl
 import kotlin.experimental.or
 
-internal class Publish(mqttMessage: MqttMessage) : MqttSentPacket(), MqttReceivedPacket {
+internal class Publish(mqttMessage: MqttMessage, private val packetIdentifier: Short? = null) : MqttSentPacket(), MqttReceivedPacket {
 
     override val fixedHeader: Byte by lazy {
         mqttMessage.constrainedQos.shl(1) or if (mqttMessage.retain) 0b0000_0001 else 0b00
@@ -17,6 +17,9 @@ internal class Publish(mqttMessage: MqttMessage) : MqttSentPacket(), MqttReceive
     override val variableHeader: List<Byte> by lazy {
         mutableListOf<Byte>().apply {
             addStringWithLength(mqttMessage.topic)
+            if (packetIdentifier != null) {
+                addShort(packetIdentifier)
+            }
         }
     }
 
@@ -27,6 +30,6 @@ internal class Publish(mqttMessage: MqttMessage) : MqttSentPacket(), MqttReceive
     }
 
     override fun toString(): String {
-        return "Publish()"
+        return "Publish(packetIdentifier=$packetIdentifier)"
     }
 }

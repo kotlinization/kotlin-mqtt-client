@@ -8,6 +8,8 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
 import kotlinx.io.IOException
 import kotlinx.mqtt.MqttConnectionStatus.*
+import kotlinx.mqtt.database.MemoryMessageDatabase
+import kotlinx.mqtt.database.MessageDatabase
 import kotlinx.mqtt.internal.connection.PacketTracker
 import kotlinx.mqtt.internal.connection.packet.Publish
 import kotlinx.mqtt.internal.connection.packet.received.ConnAck
@@ -20,6 +22,7 @@ import kotlin.properties.Delegates.observable
 class MqttClient(
     val connectionConfig: MqttConnectionConfig,
     private val logger: Logger?,
+    val messageDatabase: MessageDatabase = MemoryMessageDatabase(),
     onConnectionStatusChanged: (MqttConnectionStatus) -> Unit = {}
 ) {
 
@@ -115,8 +118,13 @@ class MqttClient(
 
     suspend fun publish(mqttMessage: MqttMessage) {
         try {
-            packetTracker.writePacket(Publish(mqttMessage)) {
-
+            when (mqttMessage.constrainedQos) {
+                //Just send message
+                MqttQos.AT_MOST_ONCE -> packetTracker.writePacket(Publish(mqttMessage))
+                MqttQos.AT_LEAST_ONCE -> {
+                    val packet = messageDatabase.createPublish(mqttMessage)
+                    packetTracker.writePacket(packet)
+                }
             }
         } catch (t: Throwable) {
             logger?.e(t) { "Unable to publish message." }

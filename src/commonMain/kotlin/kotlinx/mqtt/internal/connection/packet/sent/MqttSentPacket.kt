@@ -22,7 +22,7 @@ internal abstract class MqttSentPacket : MqttPacket {
         get() = reverseTypes[this::class] ?: throw IllegalStateException("Class not found.")
 
     fun pack(): List<Byte> {
-        val bytes = mutableListOf(packetType shl 4 + (fixedHeader and (0b00001111)))
+        val bytes = mutableListOf(((packetType shl 4) + (fixedHeader and 0b00001111)).toByte())
         bytes.addAll(remainingLength)
         bytes.addAll(variableHeader)
         bytes.addAll(payload)

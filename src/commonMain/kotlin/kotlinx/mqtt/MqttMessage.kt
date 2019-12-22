@@ -11,7 +11,7 @@ data class MqttMessage(
     /**
      * Can be [AT_MOST_ONCE], [AT_LEAST_ONCE] or [EXACTLY_ONCE]
      */
-    val qos: Int = AT_MOST_ONCE,
+    val qos: Byte = AT_MOST_ONCE,
     val retain: Boolean = false
 ) {
 
@@ -20,6 +20,6 @@ data class MqttMessage(
     }
 
     @ExperimentalStdlibApi
-    constructor(topic: String, message: String, qos: Int = AT_MOST_ONCE, retain: Boolean = false)
+    constructor(topic: String, message: String, qos: Byte = AT_MOST_ONCE, retain: Boolean = false)
             : this(topic, message.encodeToByteArray().toList(), qos, retain)
 }

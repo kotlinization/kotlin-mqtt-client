@@ -2,6 +2,7 @@ package kotlinx.mqtt.internal.connection.packet
 
 import kotlinx.mqtt.internal.connection.packet.received.ConnAck
 import kotlinx.mqtt.internal.connection.packet.received.PingResp
+import kotlinx.mqtt.internal.connection.packet.received.PubAck
 import kotlinx.mqtt.internal.connection.packet.sent.Connect
 import kotlinx.mqtt.internal.connection.packet.sent.Disconnect
 import kotlinx.mqtt.internal.connection.packet.sent.PingReq
@@ -13,6 +14,7 @@ internal val types = mapOf(
     1 to Connect::class,
     2 to ConnAck::class,
     3 to Publish::class,
+    4 to PubAck::class,
     12 to PingReq::class,
     13 to PingResp::class,
     14 to Disconnect::class
