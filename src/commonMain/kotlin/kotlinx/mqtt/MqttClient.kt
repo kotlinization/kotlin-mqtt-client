@@ -143,6 +143,9 @@ class MqttClient(
                     connectionStatus = DISCONNECTED
                 }
             }
+            else -> {
+                // Do nothing
+            }
         }
     }
 }
