@@ -5,8 +5,7 @@ import io.mockk.Ordering
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.SpyK
 import io.mockk.verify
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
 import kotlinx.mqtt.MqttQos.AT_LEAST_ONCE
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -205,6 +204,21 @@ internal class MqttClientTest {
         client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
         client.connect()
         client.publish(MqttMessage("test", "Hello", qos = AT_LEAST_ONCE))
+        client.disconnect()
+    }
+
+    @Test
+    @ExperimentalStdlibApi
+    fun publishMultipleQoS1() = withBroker {
+        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
+        client.connect()
+        val jobs = mutableListOf<Job>()
+        repeat(10_00) {
+            jobs += GlobalScope.launch {
+                client.publish(MqttMessage("test", "Hello", qos = AT_LEAST_ONCE))
+            }
+        }
+        jobs.joinAll()
         client.disconnect()
     }
 }

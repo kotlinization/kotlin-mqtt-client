@@ -1,11 +1,8 @@
 package kotlinx.mqtt
 
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withTimeout
 import kotlinx.io.IOException
 import kotlinx.mqtt.MqttConnectionStatus.*
 import kotlinx.mqtt.database.MemoryMessageDatabase
@@ -116,18 +113,34 @@ class MqttClient(
         }
     }
 
-    suspend fun publish(mqttMessage: MqttMessage) {
-        try {
-            when (mqttMessage.constrainedQos) {
-                //Just send message
-                MqttQos.AT_MOST_ONCE -> packetTracker.writePacket(Publish(mqttMessage))
-                MqttQos.AT_LEAST_ONCE -> {
-                    val packet = messageDatabase.createPublish(mqttMessage)
-                    packetTracker.writePacket(packet)
+    suspend fun publish(mqttMessage: MqttMessage): Boolean {
+        return withContext(mqttDispatcher) {
+            try {
+                var completed = false
+                when (mqttMessage.constrainedQos) {
+                    //Just send message
+                    MqttQos.AT_MOST_ONCE -> {
+                        packetTracker.writePacket(Publish(mqttMessage))
+                        completed = true
+                    }
+                    MqttQos.AT_LEAST_ONCE -> {
+                        val packet = messageDatabase.createPublish(mqttMessage)
+                        packetTracker.writePacket(packet) {
+                            messageDatabase.messagePublished(it)
+                            completed = true
+                        }
+                    }
                 }
+                withTimeout(connectionConfig.connectionTimeoutMilliseconds) {
+                    while (isActive && !completed) {
+                        delay(10)
+                    }
+                }
+                true
+            } catch (t: Throwable) {
+                logger?.e(t) { "Unable to publish message." }
+                false
             }
-        } catch (t: Throwable) {
-            logger?.e(t) { "Unable to publish message." }
         }
     }
 
