@@ -11,6 +11,8 @@ import kotlin.experimental.or
 
 internal class Connect(private val connectionConfig: MqttConnectionConfig) : MqttSentPacket() {
 
+    override val fixedHeader: Byte = 0
+
     override val variableHeader: List<Byte> by lazy {
         var flags: Byte = 0
         if (connectionConfig.cleanSession) {
@@ -25,7 +27,7 @@ internal class Connect(private val connectionConfig: MqttConnectionConfig) : Mqt
         if (connectionConfig.willMessage != null) {
             flags = flags or 0b0000_0100
             flags = flags or if (connectionConfig.willMessage.retain) 0b0100_0000 else 0
-            flags = flags or (connectionConfig.willMessage.qos.ordinal.toByte() shl 3)
+            flags = flags or (connectionConfig.willMessage.constrainedQos shl 3)
         }
         mutableListOf<Byte>().apply {
             addStringWithLength("MQTT")

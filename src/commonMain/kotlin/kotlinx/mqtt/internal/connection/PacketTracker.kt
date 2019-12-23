@@ -35,13 +35,13 @@ internal class PacketTracker(
     /**
      * @throws Throwable
      */
-    suspend fun writePacket(mqttPacket: MqttSentPacket, onResponse: suspend (MqttReceivedPacket) -> Unit) {
+    suspend fun writePacket(mqttPacket: MqttSentPacket, onResponse: suspend (MqttReceivedPacket) -> Unit = {}) {
+        connection.outputStream.write(mqttPacket.pack().toByteArray())
+        logger?.t { "Packet written: $mqttPacket." }
         packetsMutex.withLock {
-            connection.outputStream.write(mqttPacket.pack().toByteArray())
-            logger?.t { "Packet written: $mqttPacket." }
             sentPackets.add(PacketResponse(mqttPacket, onResponse))
-            packetTransit()
         }
+        packetTransit()
     }
 
     fun startReceiving() {
@@ -65,13 +65,15 @@ internal class PacketTracker(
         pingJob = GlobalScope.launch(mqttDispatcher) {
             val timeout = connection.connectionConfig.keepAlive * 500L
             delay(timeout)
-            val waitingResponse = launch(mqttDispatcher) {
+            val waitingResponse = GlobalScope.launch(mqttDispatcher) {
                 delay(timeout)
                 logger?.e { "Ping request timed out" }
                 onError()
             }
-            writePacket(PingReq()) {
-                waitingResponse.cancel()
+            GlobalScope.launch {
+                writePacket(PingReq()) {
+                    waitingResponse.cancel()
+                }
             }
         }
     }
