@@ -7,6 +7,7 @@ import io.mockk.impl.annotations.SpyK
 import io.mockk.verify
 import kotlinx.coroutines.*
 import kotlinx.mqtt.MqttQos.AT_LEAST_ONCE
+import kotlinx.mqtt.MqttQos.EXACTLY_ONCE
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -219,6 +220,18 @@ internal class MqttClientTest {
             }
         }
         jobs.joinAll()
+        client.disconnect()
+    }
+
+    @Test
+    @ExperimentalStdlibApi
+    fun publishQoS2() = withBroker {
+        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
+        client.connect()
+        assertTrue(
+            client.publish(MqttMessage("test", "Hello", qos = EXACTLY_ONCE))
+        )
+        assertEquals(MqttConnectionStatus.CONNECTED, client.connectionStatus)
         client.disconnect()
     }
 }

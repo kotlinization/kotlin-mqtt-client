@@ -2,6 +2,7 @@ package kotlinx.mqtt
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.io.ByteArrayInputStream
+import shl
 import toDecodedInt
 import toEncodedBytes
 import kotlin.test.Test

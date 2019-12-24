@@ -6,6 +6,7 @@ import kotlinx.mqtt.MqttMessage
 import kotlinx.mqtt.internal.connection.packet.Publish
 import kotlinx.mqtt.internal.connection.packet.received.MqttReceivedPacket
 import kotlinx.mqtt.internal.connection.packet.received.PubAck
+import kotlinx.mqtt.internal.connection.packet.received.PubComp
 
 abstract class MessageDatabase {
 
@@ -19,9 +20,13 @@ abstract class MessageDatabase {
     }
 
     internal suspend fun messagePublished(receivedPacket: MqttReceivedPacket) {
-        messageMutex.withLock {
-            val packageIdentifier = (receivedPacket as? PubAck)?.packageIdentifier ?: return
-            deleteMessage(packageIdentifier)
+        when (receivedPacket) {
+            is PubAck -> {
+                messageMutex.withLock { deleteMessage(receivedPacket.packageIdentifier) }
+            }
+            is PubComp -> {
+                messageMutex.withLock { deleteMessage(receivedPacket.packageIdentifier) }
+            }
         }
     }
 

@@ -19,6 +19,8 @@ internal suspend fun InputStream.getPacket(): MqttReceivedPacket {
         ConnAck::class -> ConnAck(bytes)
         PingResp::class -> PingResp()
         PubAck::class -> PubAck(bytes.toShort())
+        PubRec::class -> PubRec(bytes.toShort())
+        PubComp::class -> PubComp(bytes.toShort())
         else -> throw IllegalArgumentException("Unknown class: $kClass")
     }
 }

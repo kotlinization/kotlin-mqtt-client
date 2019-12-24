@@ -12,6 +12,7 @@ import kotlinx.mqtt.internal.connection.packet.Publish
 import kotlinx.mqtt.internal.connection.packet.received.ConnAck
 import kotlinx.mqtt.internal.connection.packet.sent.Connect
 import kotlinx.mqtt.internal.connection.packet.sent.Disconnect
+import kotlinx.mqtt.internal.connection.packet.sent.PubRel
 import kotlinx.mqtt.internal.createConnection
 import kotlinx.mqtt.internal.mqttDispatcher
 import kotlin.properties.Delegates.observable
@@ -128,6 +129,16 @@ class MqttClient(
                         packetTracker.writePacket(packet) {
                             messageDatabase.messagePublished(it)
                             completed = true
+                        }
+                    }
+                    MqttQos.EXACTLY_ONCE -> {
+                        val packet = messageDatabase.createPublish(mqttMessage)
+                        val packetIdentifier = packet.packetIdentifier ?: throw IllegalStateException("Packet identifier must not be null.")
+                        packetTracker.writePacket(packet) {
+                            packetTracker.writePacket(PubRel(packetIdentifier)) {
+                                messageDatabase.messagePublished(it)
+                                completed = true
+                            }
                         }
                     }
                 }

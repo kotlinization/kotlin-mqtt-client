@@ -1,8 +1,6 @@
 package kotlinx.mqtt
 
-import kotlinx.coroutines.delay
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import kotlinx.mqtt.MqttQos.EXACTLY_ONCE
 
 
 @ExperimentalStdlibApi
@@ -18,15 +16,7 @@ suspend fun main() {
             println("Connection changed: $it")
         }
     )
-    repeat(10) {
-        val connected = client.connect()
-        println("Connected: $connected")
-//        println("Broker is connected: ${client.connected}")
-//        assertTrue { client.connected }
-//        delay(5000)
-//        val disconnect = client.disconnect()
-//        println("Disconnected: ${disconnect.await()}")
-//        assertFalse { client.connected }
-        delay(5000)
-    }
+    val connected = client.connect()
+    println("Connected: $connected")
+    client.publish(MqttMessage("TEST", "QOS2", EXACTLY_ONCE))
 }
