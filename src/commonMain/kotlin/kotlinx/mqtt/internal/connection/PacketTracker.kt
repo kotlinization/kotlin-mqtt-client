@@ -36,9 +36,11 @@ internal class PacketTracker(
      * @throws Throwable
      */
     suspend fun writePacket(mqttPacket: MqttSentPacket, onResponse: suspend (MqttReceivedPacket) -> Unit = {}) {
-        connection.outputStream.write(mqttPacket.pack().toByteArray())
-        logger?.t { "Packet written: $mqttPacket." }
+        //In order to prevent response before sent packed is added,
+        //packet mutex must be locked.
         packetsMutex.withLock {
+            connection.outputStream.write(mqttPacket.pack().toByteArray())
+            logger?.t { "Packet written: $mqttPacket." }
             sentPackets.add(PacketResponse(mqttPacket, onResponse))
         }
         packetTransit()
