@@ -34,14 +34,14 @@ class MqttClient(
 
     private val connection by lazy {
         createConnection(connectionConfig, logger) {
-            localScope.launch(mqttDispatcher) { updateStatus(it) }
+            localScope.launch { updateStatus(it) }
         }
     }
 
     private val packetTracker by lazy {
         PacketTracker(connection, logger) {
             connectionStatus = ERROR
-            localScope.launch(mqttDispatcher) {
+            localScope.launch {
                 updateStatus(connection.connected)
             }
         }

@@ -71,7 +71,7 @@ class ClientConnectionTest {
         repeat(1_000) {
             assertTrue(client.connect())
         }
-        verify(exactly = 1, timeout = connectTimeout, ordering = Ordering.SEQUENCE) {
+        verify(exactly = 1, timeout = connectTimeout) {
             onConnection(MqttConnectionStatus.CONNECTED)
         }
 

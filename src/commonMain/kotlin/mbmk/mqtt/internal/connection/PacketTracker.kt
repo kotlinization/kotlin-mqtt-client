@@ -33,6 +33,8 @@ internal class PacketTracker(
 
     private var pingJob: Job? = null
 
+    private val localScope = CoroutineScope(mqttDispatcher + SupervisorJob())
+
     /**
      * @throws Throwable
      */
@@ -49,7 +51,7 @@ internal class PacketTracker(
 
     fun startReceiving() {
         if (receivingJob?.isActive == true) return
-        receivingJob = GlobalScope.launch(mqttDispatcher) {
+        receivingJob = localScope.launch {
             receivePackets()
         }
     }
@@ -65,15 +67,15 @@ internal class PacketTracker(
     private suspend fun packetTransit() {
         pingJob?.cancel()
         // Send ping request if no packet has been sent or received in half keep alive interval.
-        pingJob = GlobalScope.launch(mqttDispatcher) {
+        pingJob = localScope.launch {
             val timeout = connection.connectionConfig.keepAlive * 500L
             delay(timeout)
-            val waitingResponse = GlobalScope.launch(mqttDispatcher) {
+            val waitingResponse = localScope.launch {
                 delay(timeout)
                 logger?.e { "Ping request timed out" }
                 onError()
             }
-            GlobalScope.launch {
+            localScope.launch {
                 writePacket(PingReq()) {
                     waitingResponse.cancel()
                 }
@@ -100,7 +102,7 @@ internal class PacketTracker(
                         sentPackets.remove(response)
                     }
                     logger?.t { "Calling packet response." }
-                    GlobalScope.launch(mqttDispatcher) {
+                    localScope.launch {
                         response.onResponse(packet)
                     }
                 }
