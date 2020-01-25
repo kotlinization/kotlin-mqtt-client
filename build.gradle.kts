@@ -2,7 +2,7 @@ plugins {
     kotlin("multiplatform") version "1.3.61"
 }
 
-val coroutinesVersion = "1.3.2"
+val coroutinesVersion = "1.3.3"
 val serializationVersion = "0.14.0"
 
 repositories {
