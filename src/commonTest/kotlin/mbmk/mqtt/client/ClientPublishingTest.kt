@@ -8,7 +8,6 @@ import mbmk.mqtt.*
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class ClientPublishingTest {
 
@@ -39,8 +38,8 @@ class ClientPublishingTest {
     @ExperimentalStdlibApi
     fun publishQoS0() = withBroker {
         client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
-        client.connect()
-        client.publish(MqttMessage("test", "Hello"))
+        client.connect(10_000)
+        client.publishMessage(MqttMessage("test", "Hello"))
         client.disconnect()
     }
 
@@ -48,10 +47,10 @@ class ClientPublishingTest {
     @ExperimentalStdlibApi
     fun publishMultipleQoS0() = withBroker {
         client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
-        client.connect()
+        client.connect(10_000)
         repeat(10) {
             delay(200)
-            client.publish(MqttMessage("test", it.toString()))
+            client.publishMessage(MqttMessage("test", it.toString()))
         }
         client.disconnect()
     }
@@ -60,8 +59,9 @@ class ClientPublishingTest {
     @ExperimentalStdlibApi
     fun publishQoS1() = withBroker {
         client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
-        client.connect()
-        client.publish(MqttMessage("test", "Hello", qos = MqttQos.AT_LEAST_ONCE))
+        client.connect(10_000)
+        client.publishMessage(MqttMessage("test", "Hello", qos = MqttQos.AT_LEAST_ONCE))
+        delay(1000)
         client.disconnect()
     }
 
@@ -69,11 +69,11 @@ class ClientPublishingTest {
     @ExperimentalStdlibApi
     fun publishMultipleQoS1() = withBroker {
         client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
-        client.connect()
+        client.connect(10_000)
         val jobs = mutableListOf<Job>()
         repeat(10_00) {
             jobs += GlobalScope.launch {
-                client.publish(
+                client.publishMessage(
                     MqttMessage(
                         "test",
                         "Hello",
@@ -90,17 +90,16 @@ class ClientPublishingTest {
     @ExperimentalStdlibApi
     fun publishQoS2() = withBroker {
         client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
-        client.connect()
-        assertTrue(
-            client.publish(
-                MqttMessage(
-                    "test",
-                    "Hello",
-                    qos = MqttQos.EXACTLY_ONCE
-                )
+        client.connect(10_000)
+        client.publishMessage(
+            MqttMessage(
+                "test",
+                "Hello",
+                qos = MqttQos.EXACTLY_ONCE
             )
         )
         assertEquals(MqttConnectionStatus.CONNECTED, client.connectionStatus)
+        delay(5_000)
         client.disconnect()
     }
 }

@@ -1,6 +1,8 @@
 package mbmk.mqtt.internal.connection.packet.received
 
-class PingResp : MqttReceivedPacket {
+internal class PingResp : MqttReceivedPacket {
+
+    override val packetIdentifier: Short = 0
 
     override fun toString(): String {
         return "PingResp()"

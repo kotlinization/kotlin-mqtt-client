@@ -20,6 +20,8 @@ internal class ConnAck(bytes: List<Byte>) : MqttReceivedPacket {
         }
     }
 
+    override val packetIdentifier: Short = 0
+
     override fun toString(): String {
         return "ConnAck(returnedCode=$returnedCode)"
     }

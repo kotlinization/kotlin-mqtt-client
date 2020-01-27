@@ -2,11 +2,11 @@ package mbmk.mqtt.internal.connection.packet.received
 
 import kotlinx.io.IOException
 import kotlinx.io.InputStream
-import mbmk.mqtt.internal.connection.packet.MqttPacket
-import mbmk.mqtt.internal.connection.packet.types
-import readBytes
-import toDecodedInt
-import toShort
+import mbmk.mqtt.MqttPacket
+import mbmk.mqtt.types
+import mbmk.mqtt.internal.util.readBytes
+import mbmk.mqtt.internal.util.toDecodedInt
+import mbmk.mqtt.internal.util.toShort
 
 internal interface MqttReceivedPacket : MqttPacket
 

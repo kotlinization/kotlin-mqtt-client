@@ -1,10 +1,10 @@
 package mbmk.mqtt.internal.connection.packet.sent
 
-import mbmk.mqtt.internal.connection.packet.MqttPacket
+import mbmk.mqtt.MqttPacket
 import mbmk.mqtt.internal.connection.packet.received.MqttReceivedPacket
-import mbmk.mqtt.internal.connection.packet.reverseTypes
-import shl
-import toEncodedBytes
+import mbmk.mqtt.reverseTypes
+import mbmk.mqtt.internal.util.shl
+import mbmk.mqtt.internal.util.toEncodedBytes
 import kotlin.experimental.and
 
 internal abstract class MqttSentPacket : MqttPacket {

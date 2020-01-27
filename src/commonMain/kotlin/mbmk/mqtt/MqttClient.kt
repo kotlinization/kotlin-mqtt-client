@@ -3,31 +3,33 @@ package mbmk.mqtt
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.io.IOException
 import mbmk.mqtt.MqttConnectionStatus.*
 import mbmk.mqtt.database.MemoryMessageDatabase
 import mbmk.mqtt.database.MessageDatabase
-import mbmk.mqtt.internal.changeable
-import mbmk.mqtt.internal.connection.PacketTracker
+import mbmk.mqtt.internal.PacketTracker
 import mbmk.mqtt.internal.connection.packet.Publish
-import mbmk.mqtt.internal.connection.packet.received.ConnAck
+import mbmk.mqtt.internal.connection.packet.received.*
 import mbmk.mqtt.internal.connection.packet.sent.Connect
 import mbmk.mqtt.internal.connection.packet.sent.Disconnect
+import mbmk.mqtt.internal.connection.packet.sent.MqttSentPacket
 import mbmk.mqtt.internal.connection.packet.sent.PubRel
 import mbmk.mqtt.internal.createConnection
 import mbmk.mqtt.internal.mqttDispatcher
+import mbmk.mqtt.internal.util.changeable
 
 class MqttClient(
     val connectionConfig: MqttConnectionConfig,
     private val logger: Logger?,
-    private val messageDatabase: MessageDatabase = MemoryMessageDatabase(),
+    private val messageDatabase: MessageDatabase = MemoryMessageDatabase(logger),
     onConnectionStatusChanged: (MqttConnectionStatus) -> Unit = {}
 ) {
 
     var connectionStatus: MqttConnectionStatus by changeable(DISCONNECTED) { newValue ->
-        logger?.d { "Connection status changed: $newValue" }
+        logger?.t { "Connection status changed: $newValue" }
         runCatching {
             onConnectionStatusChanged(newValue)
+        }.onFailure {
+            logger?.e(it) { "Error while invoking callback." }
         }
     }
         private set
@@ -39,10 +41,20 @@ class MqttClient(
     }
 
     private val packetTracker by lazy {
-        PacketTracker(connection, logger) {
-            connectionStatus = ERROR
-            localScope.launch {
-                updateStatus(connection.connected)
+        PacketTracker(
+            connection, messageDatabase, logger,
+            onError = this::onPacketTrackerError,
+            onPacketReceived = this::packetReceived
+        )
+    }
+
+    private fun onPacketTrackerError() {
+        localScope.launch {
+            connectionMutex.withLock {
+                if (connectionStatus == CONNECTED || connectionStatus == CONNECTING || connectionStatus == ESTABLISHING) {
+                    connectionStatus = ERROR
+                    updateStatus(connection.connected)
+                }
             }
         }
     }
@@ -51,49 +63,33 @@ class MqttClient(
 
     private val localScope = CoroutineScope(mqttDispatcher + SupervisorJob())
 
-    suspend fun connect(): Boolean {
-        return connectionMutex.withLock {
-            try {
-                withTimeout(connectionConfig.connectionTimeoutMilliseconds * 2) {
-                    if (connectionStatus == CONNECTED) {
-                        return@withTimeout true
-                    }
-                    if (connectionStatus == DISCONNECTED) {
+    fun connect() {
+        localScope.launch {
+            connectionMutex.withLock {
+                try {
+                    if (connectionStatus == DISCONNECTED || connectionStatus == ERROR) {
                         connectionStatus = CONNECTING
                         connection.connect()
+                        connectionStatus = ESTABLISHING
+                        packetTracker.startReceiving()
+                        packetTracker.writePacket(Connect(connectionConfig))
                     }
-                    while (connectionStatus == CONNECTING) {
-                        delay(10)
-                    }
-                    if (connectionStatus != ESTABLISHING) {
-                        throw IOException("Unable to establish connection.")
-                    }
-                    packetTracker.startReceiving()
-                    var error: Throwable? = null
-                    var finished = false
-                    packetTracker.writePacket(Connect(connectionConfig)) { received ->
-                        error = try {
-                            val packet = received as? ConnAck ?: throw IOException("Wrong packet received.")
-                            packet.error
-                        } catch (t: Throwable) {
-                            t
-                        } finally {
-                            finished = true
-                        }
-                    }
-                    while (!finished) {
-                        delay(10)
-                    }
-                    error?.let { throw it }
-                    logger?.t { "Connection established, now active." }
-                    connectionStatus = CONNECTED
-                    true
+                } catch (t: Throwable) {
+                    logger?.e(t) { "Unable to connect." }
+                    connectionStatus = ERROR
+                    updateStatus(connection.connected)
                 }
-            } catch (t: Throwable) {
-                logger?.e(t) { "Unable to connect." }
-                connectionStatus = ERROR
-                updateStatus(connection.connected)
-                false
+            }
+        }
+    }
+
+    suspend fun connect(timeout: Long) {
+        withTimeout(timeout) {
+            while (connectionStatus != CONNECTED) {
+                connect()
+                while (connectionStatus == CONNECTING || connectionStatus == ESTABLISHING) {
+                    delay(10)
+                }
             }
         }
     }
@@ -103,55 +99,30 @@ class MqttClient(
             connectionMutex.withLock {
                 if (connectionStatus == CONNECTED) {
                     connectionStatus = DISCONNECTING
-                    packetTracker.writePacket(Disconnect()) {}
+                    packetTracker.writePacket(Disconnect())
                     packetTracker.stopReceiving()
                     connection.disconnect()
                     connectionStatus = DISCONNECTED
                 }
             }
         } catch (t: Throwable) {
+            connectionStatus = ERROR
             logger?.e(t) { "Error while disconnecting." }
         }
     }
 
-    suspend fun publish(mqttMessage: MqttMessage): Boolean {
-        return withContext(mqttDispatcher) {
-            try {
-                var completed = false
-                when (mqttMessage.constrainedQos) {
-                    //Just send message
-                    MqttQos.AT_MOST_ONCE -> {
-                        packetTracker.writePacket(Publish(mqttMessage))
-                        completed = true
-                    }
-                    MqttQos.AT_LEAST_ONCE -> {
-                        val packet = messageDatabase.createPublish(mqttMessage)
-                        packetTracker.writePacket(packet) {
-                            messageDatabase.messagePublished(it)
-                            completed = true
-                        }
-                    }
-                    MqttQos.EXACTLY_ONCE -> {
-                        val packet = messageDatabase.createPublish(mqttMessage)
-                        val packetIdentifier = packet.packetIdentifier ?: throw IllegalStateException("Packet identifier must not be null.")
-                        packetTracker.writePacket(packet) {
-                            packetTracker.writePacket(PubRel(packetIdentifier)) {
-                                messageDatabase.messagePublished(it)
-                                completed = true
-                            }
-                        }
-                    }
-                }
-                withTimeout(connectionConfig.connectionTimeoutMilliseconds) {
-                    while (isActive && !completed) {
-                        delay(10)
-                    }
-                }
-                true
-            } catch (t: Throwable) {
-                logger?.e(t) { "Unable to publish message." }
-                false
-            }
+    fun publishMessage(message: MqttMessage) {
+        localScope.launch {
+            publishPacket(Publish(message, 0))
+        }
+    }
+
+    private suspend fun publishPacket(packet: MqttSentPacket) {
+        try {
+            packetTracker.writePacket(packet)
+        } catch (t: Throwable) {
+            connectionStatus = ERROR
+            logger?.e(t) { "Unable to publish packet: $packet." }
         }
     }
 
@@ -178,6 +149,46 @@ class MqttClient(
             else -> {
                 // Do nothing
             }
+        }
+    }
+
+    private fun packetReceived(mqttReceivedPacket: MqttReceivedPacket) {
+        when (mqttReceivedPacket) {
+            is ConnAck -> connAckReceived(mqttReceivedPacket)
+            is PubAck, is PubComp -> packetCompleted(mqttReceivedPacket)
+            is PubRec -> pubRecReceived(mqttReceivedPacket)
+            else -> logger?.e { "Invalid packet received: $mqttReceivedPacket" }
+        }
+    }
+
+    private fun connAckReceived(connAck: ConnAck) {
+        localScope.launch {
+            connectionMutex.withLock {
+                if (connectionStatus == ESTABLISHING) {
+                    if (connAck.error == null) {
+                        connectionStatus = CONNECTED
+                        logger?.t { "Connection established, now active." }
+                    } else {
+                        connectionStatus = ERROR
+                        logger?.e(connAck.error) { "Error ConnAck received." }
+                    }
+                } else {
+                    connectionStatus = ERROR
+                    logger?.e { "Invalid state: Received ConnAck while not in establishing connection." }
+                }
+            }
+        }
+    }
+
+    private fun packetCompleted(mqttReceivedPacket: MqttReceivedPacket) {
+        localScope.launch {
+            messageDatabase.deletePacket(mqttReceivedPacket.packetIdentifier)
+        }
+    }
+
+    private fun pubRecReceived(pubRec: PubRec) {
+        localScope.launch {
+            publishPacket(PubRel(pubRec.packetIdentifier))
         }
     }
 }

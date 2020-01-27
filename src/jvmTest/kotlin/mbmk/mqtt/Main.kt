@@ -18,5 +18,5 @@ suspend fun main() {
     )
     val connected = client.connect()
     println("Connected: $connected")
-    client.publish(MqttMessage("TEST", "QOS2", EXACTLY_ONCE))
+    client.publishMessage(MqttMessage("TEST", "QOS2", EXACTLY_ONCE))
 }

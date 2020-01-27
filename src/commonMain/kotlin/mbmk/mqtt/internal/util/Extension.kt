@@ -1,3 +1,5 @@
+package mbmk.mqtt.internal.util
+
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.io.ByteBuffer

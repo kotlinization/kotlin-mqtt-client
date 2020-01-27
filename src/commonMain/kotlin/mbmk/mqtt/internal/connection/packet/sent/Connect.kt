@@ -1,15 +1,15 @@
 package mbmk.mqtt.internal.connection.packet.sent
 
-import addByteList
-import addShort
-import addStringWithLength
 import mbmk.mqtt.MqttConnectionConfig
 import mbmk.mqtt.internal.connection.packet.received.ConnAck
 import mbmk.mqtt.internal.connection.packet.received.MqttReceivedPacket
-import shl
+import mbmk.mqtt.internal.util.addByteList
+import mbmk.mqtt.internal.util.addShort
+import mbmk.mqtt.internal.util.addStringWithLength
+import mbmk.mqtt.internal.util.shl
 import kotlin.experimental.or
 
-internal class Connect(private val connectionConfig: MqttConnectionConfig) : MqttSentPacket() {
+internal data class Connect(private val connectionConfig: MqttConnectionConfig) : MqttSentPacket() {
 
     override val fixedHeader: Byte = 0
 
@@ -27,7 +27,7 @@ internal class Connect(private val connectionConfig: MqttConnectionConfig) : Mqt
         if (connectionConfig.willMessage != null) {
             flags = flags or 0b0000_0100
             flags = flags or if (connectionConfig.willMessage.retain) 0b0100_0000 else 0
-            flags = flags or (connectionConfig.willMessage.constrainedQos shl 3)
+            flags = flags or (connectionConfig.willMessage.qos.ordinal.toByte() shl 3)
         }
         mutableListOf<Byte>().apply {
             addStringWithLength("MQTT")
@@ -49,6 +49,8 @@ internal class Connect(private val connectionConfig: MqttConnectionConfig) : Mqt
 
         }
     }
+
+    override val packetIdentifier: Short = 0
 
     override fun isResponse(receivedPacket: MqttReceivedPacket): Boolean {
         return receivedPacket is ConnAck

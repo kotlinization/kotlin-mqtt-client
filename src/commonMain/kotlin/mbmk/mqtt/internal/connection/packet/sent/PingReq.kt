@@ -11,6 +11,8 @@ internal class PingReq : MqttSentPacket() {
 
     override val payload by lazy { emptyList<Byte>() }
 
+    override val packetIdentifier: Short = 0
+
     override fun isResponse(receivedPacket: MqttReceivedPacket): Boolean {
         return receivedPacket is PingResp
     }

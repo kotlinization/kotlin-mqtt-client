@@ -1,13 +1,17 @@
-package mbmk.mqtt.internal.connection.packet
+package mbmk.mqtt
 
+import mbmk.mqtt.internal.connection.packet.Publish
 import mbmk.mqtt.internal.connection.packet.received.*
-import mbmk.mqtt.internal.connection.packet.sent.Connect
-import mbmk.mqtt.internal.connection.packet.sent.Disconnect
-import mbmk.mqtt.internal.connection.packet.sent.PingReq
-import mbmk.mqtt.internal.connection.packet.sent.PubRel
+import mbmk.mqtt.internal.connection.packet.sent.*
 
 
-internal interface MqttPacket
+interface MqttPacket {
+
+    /**
+     * Packets that don' use identifier has value [0].
+     */
+    val packetIdentifier: Short
+}
 
 internal val types = mapOf(
     1 to Connect::class,
@@ -17,6 +21,7 @@ internal val types = mapOf(
     5 to PubRec::class,
     6 to PubRel::class,
     7 to PubComp::class,
+    8 to Subscribe::class,
     12 to PingReq::class,
     13 to PingResp::class,
     14 to Disconnect::class

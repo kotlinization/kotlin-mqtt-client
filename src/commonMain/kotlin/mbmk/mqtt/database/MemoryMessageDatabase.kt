@@ -1,22 +1,32 @@
 package mbmk.mqtt.database
 
-import mbmk.mqtt.MqttMessage
+import mbmk.mqtt.Logger
+import mbmk.mqtt.MqttPacket
 
-class MemoryMessageDatabase : MessageDatabase() {
+class MemoryMessageDatabase(logger: Logger?) : MessageDatabase(logger) {
 
-    private val messages = mutableMapOf<Short, MqttMessage>()
+    private val messages = mutableMapOf<Short, MqttPacket>()
 
-    override fun saveMessage(mqttMessage: MqttMessage): Short {
+    override fun generatePackageId(): Short {
+        messages.size.toShort().coerceAtLeast(1)
         var identifier: Short = messages.size.toShort().coerceAtLeast(1)
         while (messages.containsKey(identifier)) {
             identifier++
         }
-        messages[identifier] = mqttMessage
         return identifier
     }
 
-    override fun deleteMessage(packageIdentifier: Short) {
-        messages.remove(packageIdentifier)
+    override fun storeMessage(mqttPacket: MqttPacket) {
+        super.storeMessage(mqttPacket)
+        if (messages.containsKey(mqttPacket.packetIdentifier)) {
+            logger?.e { "Invalid state, identifier already stored." }
+        }
+        messages[mqttPacket.packetIdentifier] = mqttPacket
+    }
+
+    override fun removeMessage(packetIdentifier: Short) {
+        super.removeMessage(packetIdentifier)
+        messages.remove(packetIdentifier)
     }
 }
 

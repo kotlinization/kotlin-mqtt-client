@@ -11,6 +11,8 @@ internal class Disconnect : MqttSentPacket() {
 
     override val payload by lazy { emptyList<Byte>() }
 
+    override val packetIdentifier: Short = 0
+
     override fun isResponse(receivedPacket: MqttReceivedPacket): Boolean {
         return false
     }

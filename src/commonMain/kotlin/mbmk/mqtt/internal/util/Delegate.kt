@@ -1,4 +1,4 @@
-package mbmk.mqtt.internal
+package mbmk.mqtt.internal.util
 
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
@@ -10,7 +10,7 @@ internal fun <T> changeable(initialValue: T, onChange: (newValue: T) -> Unit): R
 
 private class OnPropertyChanged<in R, T>(
     private var value: T,
-    private val isEqual: (t1: T, t2: T) -> Boolean = { t1, t2 -> t1 == t2 },
+    private val isDifferent: (t1: T, t2: T) -> Boolean = { t1, t2 -> t1 != t2 },
     private val onChange: (newValue: T) -> Unit
 ) : ReadWriteProperty<R, T> {
 
@@ -19,7 +19,7 @@ private class OnPropertyChanged<in R, T>(
     }
 
     override fun setValue(thisRef: R, property: KProperty<*>, value: T) {
-        val notify = isEqual(this.value, value).not()
+        val notify = isDifferent(this.value, value)
         this.value = value
         if (notify) {
             onChange(value)

@@ -6,7 +6,7 @@ import kotlinx.io.InputStream
 import kotlinx.io.OutputStream
 import mbmk.mqtt.Logger
 import mbmk.mqtt.MqttConnectionConfig
-import kotlin.properties.Delegates.observable
+import mbmk.mqtt.internal.util.changeable
 
 internal abstract class MqttConnection(
     val connectionConfig: MqttConnectionConfig,
@@ -14,11 +14,9 @@ internal abstract class MqttConnection(
     private val onConnectionChanged: (Boolean) -> Unit
 ) {
 
-    var connected by observable(false) { _, oldValue, newValue ->
-        if (oldValue != newValue) {
-            logger?.d { "Connection state changed. Connected: $newValue." }
-            onConnectionChanged(newValue)
-        }
+    var connected by changeable(false) { newValue ->
+        logger?.d { "Connection state changed. Connected: $newValue." }
+        onConnectionChanged(newValue)
     }
         private set
 
@@ -34,7 +32,7 @@ internal abstract class MqttConnection(
     suspend fun connect() {
         connectionMutex.withLock {
             if (connected) {
-                logger?.t { "Client is already connected, returning true." }
+                logger?.t { "Client is already connected." }
                 return
             }
             establishConnection(connectionConfig.serverUri, connectionConfig.connectionTimeoutMilliseconds)

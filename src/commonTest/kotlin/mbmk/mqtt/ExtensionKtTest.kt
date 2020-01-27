@@ -2,9 +2,8 @@ package mbmk.mqtt
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.io.ByteArrayInputStream
-import shl
-import toDecodedInt
-import toEncodedBytes
+import mbmk.mqtt.internal.util.toDecodedInt
+import mbmk.mqtt.internal.util.toEncodedBytes
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

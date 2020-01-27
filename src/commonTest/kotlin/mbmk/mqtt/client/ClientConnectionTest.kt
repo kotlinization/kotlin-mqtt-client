@@ -11,7 +11,6 @@ import mbmk.mqtt.*
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class ClientConnectionTest {
 
@@ -41,14 +40,21 @@ class ClientConnectionTest {
     @ExperimentalCoroutinesApi
     fun connectToBroker() = withBroker {
         client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
-        val connect = client.connect()
+        client.connect()
         verify(timeout = connectTimeout, ordering = Ordering.SEQUENCE) {
             onConnection(MqttConnectionStatus.CONNECTING)
             onConnection(MqttConnectionStatus.ESTABLISHING)
             onConnection(MqttConnectionStatus.CONNECTED)
         }
         assertEquals(MqttConnectionStatus.CONNECTED, client.connectionStatus)
-        assertTrue(connect)
+        client.disconnect()
+    }
+
+    @Test
+    fun connectToBrokerWithTimeout() = withBroker {
+        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
+        client.connect(10_000)
+        assertEquals(MqttConnectionStatus.CONNECTED, client.connectionStatus)
         client.disconnect()
     }
 
@@ -69,9 +75,11 @@ class ClientConnectionTest {
     fun multipleConnectionsWithSameClient() = withBroker {
         client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
         repeat(1_000) {
-            assertTrue(client.connect())
+            client.connect()
         }
-        verify(exactly = 1, timeout = connectTimeout) {
+        verify(timeout = connectTimeout, ordering = Ordering.SEQUENCE) {
+            onConnection(MqttConnectionStatus.CONNECTING)
+            onConnection(MqttConnectionStatus.ESTABLISHING)
             onConnection(MqttConnectionStatus.CONNECTED)
         }
 
@@ -109,7 +117,6 @@ class ClientConnectionTest {
             onConnection(MqttConnectionStatus.CONNECTING)
             onConnection(MqttConnectionStatus.ESTABLISHING)
             onConnection(MqttConnectionStatus.ERROR)
-            onConnection(MqttConnectionStatus.DISCONNECTED)
         }
     }
 
