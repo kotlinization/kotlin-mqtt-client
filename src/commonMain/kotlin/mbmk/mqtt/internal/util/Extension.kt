@@ -1,16 +1,15 @@
 package mbmk.mqtt.internal.util
 
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
-import kotlinx.io.ByteBuffer
-import kotlinx.io.IOException
-import kotlinx.io.InputStream
-import kotlinx.serialization.toUtf8Bytes
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
+import mbmk.mqtt.MQTTException
+import mbmk.mqtt.StopFlowCollection
 import kotlin.experimental.and
 import kotlin.experimental.or
 
 internal fun MutableList<Byte>.addShort(short: Short) {
-    addAll(short.toByteArray().toTypedArray())
+    addAll(short.toByteList())
 }
 
 internal fun MutableList<Byte>.addByteList(list: List<Byte>) {
@@ -18,22 +17,32 @@ internal fun MutableList<Byte>.addByteList(list: List<Byte>) {
     addAll(list)
 }
 
+@OptIn(ExperimentalStdlibApi::class)
 internal fun MutableList<Byte>.addStringWithLength(string: String) {
-    val bytes = string.toUtf8Bytes().toTypedArray()
-    addAll(bytes.size.toShort().toByteArray().toTypedArray())
+    val bytes = string.encodeToByteArray().toTypedArray()
+    addAll(bytes.size.toShort().toByteList())
     addAll(bytes)
 }
 
-internal fun Short.toByteArray(): ByteArray {
-    return ByteBuffer.allocate(2).putShort(this).array()
+
+internal fun Short.toByteList(): List<Byte> {
+    return listOf(
+        toInt().shr(8).toByte(),
+        toByte()
+    )
 }
 
 internal fun List<Byte>.toShort(): Short {
-    return ByteBuffer.allocate(size).put(toByteArray()).getShort(0)
+    if (size < 2) throw IllegalArgumentException("List must have at least 2 elements.")
+    return (get(0).toShort() + get(1).shl(8).toShort()).toShort()
 }
 
 internal infix fun Byte.shl(count: Int): Byte {
     return toInt().shl(count).toByte()
+}
+
+internal infix fun Byte.shr(count: Int): Byte {
+    return toInt().shr(count).toByte()
 }
 
 internal fun Int.toEncodedBytes(): List<Byte> {
@@ -51,37 +60,23 @@ private const val MASK = 128.toByte()
 
 private const val STOP = 0.toByte()
 
-/**
- * @throws Throwable
- */
-internal suspend fun InputStream.toDecodedInt(): Int {
+internal suspend fun Flow<Byte>.toDecodedInt(): Int {
     var multiplier = 1
     var value = 0
-    do {
-        val encodedByte = readBytes(1).first()
-        value += (encodedByte and 127) * multiplier
-        multiplier *= 128
-        if (multiplier > 128 * 128 * 128) {
-            throw IOException("Malformed remaining length.")
-        }
-    } while ((encodedByte and MASK) != STOP)
-    return value
-}
-
-/**
- * @throws Throwable
- */
-internal suspend fun InputStream.readBytes(size: Int): List<Byte> {
-    return mutableListOf<Byte>().apply {
-        while (this.size < size) {
-            val read = read()
-            if (read == -1) {
-                delay(10)
-            } else {
-                add(read.toByte())
+    try {
+        collect { encodedByte ->
+            value += (encodedByte and 127) * multiplier
+            multiplier *= 128
+            if (multiplier > 128 * 128 * 128) {
+                throw MQTTException("Malformed remaining length.")
             }
+            if ((encodedByte and MASK) == STOP)
+                throw StopFlowCollection
         }
+    } catch (sfc: StopFlowCollection) {
+        //This is expected behavior
     }
+    return value
 }
 
 internal fun Throwable.throwIfCancel() {

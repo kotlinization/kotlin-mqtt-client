@@ -2,10 +2,10 @@ package mbmk.mqtt.internal.connection
 
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.io.InputStream
-import kotlinx.io.OutputStream
 import mbmk.mqtt.Logger
 import mbmk.mqtt.MqttConnectionConfig
+import mbmk.mqtt.internal.connection.packet.received.MqttReceivedPacket
+import mbmk.mqtt.internal.connection.packet.sent.MqttSentPacket
 import mbmk.mqtt.internal.util.changeable
 
 internal abstract class MqttConnection(
@@ -20,15 +20,12 @@ internal abstract class MqttConnection(
     }
         private set
 
-    abstract val inputStream: InputStream
-
-    abstract val outputStream: OutputStream
+//    abstract val inputStream: Input
+//
+//    abstract val outputStream: Output
 
     private val connectionMutex = Mutex()
 
-    /**
-     * @throws Throwable
-     */
     suspend fun connect() {
         connectionMutex.withLock {
             if (connected) {
@@ -40,9 +37,6 @@ internal abstract class MqttConnection(
         }
     }
 
-    /**
-     * @throws Throwable
-     */
     suspend fun disconnect() {
         connectionMutex.withLock {
             if (!connected) {
@@ -53,6 +47,16 @@ internal abstract class MqttConnection(
             connected = false
         }
     }
+
+    /**
+     * Sends [packet] to broker.
+     */
+    abstract suspend fun writePacket(packet: MqttSentPacket)
+
+    /**
+     * Waits until new packet is received from broker.
+     */
+    abstract suspend fun readPacket(): MqttReceivedPacket
 
     /**
      * @throws Throwable

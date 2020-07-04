@@ -6,7 +6,6 @@ import mbmk.mqtt.database.MessageDatabase
 import mbmk.mqtt.internal.connection.MqttConnection
 import mbmk.mqtt.internal.connection.packet.received.MqttReceivedPacket
 import mbmk.mqtt.internal.connection.packet.received.PingResp
-import mbmk.mqtt.internal.connection.packet.received.getPacket
 import mbmk.mqtt.internal.connection.packet.sent.MqttSentPacket
 import mbmk.mqtt.internal.connection.packet.sent.PingReq
 import mbmk.mqtt.internal.util.throwIfCancel
@@ -31,7 +30,7 @@ internal class PacketTracker(
     suspend fun writePacket(mqttPacket: MqttSentPacket): MqttSentPacket {
         val savedPacket: MqttSentPacket = messageDatabase.savePacket(mqttPacket)
         return withContext(NonCancellable) {
-            connection.outputStream.write(savedPacket.pack().toByteArray())
+            connection.writePacket(savedPacket)
             logger?.t { "Packet written: $savedPacket." }
             packetTransit()
             savedPacket
@@ -73,7 +72,7 @@ internal class PacketTracker(
         withContext(mqttDispatcher) {
             try {
                 while (isActive) {
-                    val packet = connection.inputStream.getPacket()
+                    val packet = connection.readPacket()
                     packetTransit()
                     logger?.t { "Packet received: $packet." }
                     if (packet !is PingResp) {

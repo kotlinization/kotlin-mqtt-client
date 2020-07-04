@@ -2,7 +2,7 @@ package mbmk.mqtt.internal.connection.packet.sent
 
 import mbmk.mqtt.internal.connection.packet.received.MqttReceivedPacket
 import mbmk.mqtt.internal.connection.packet.received.PubComp
-import mbmk.mqtt.internal.util.toByteArray
+import mbmk.mqtt.internal.util.toByteList
 
 internal data class PubRel(override val packetIdentifier: Short) : MqttSentPacket() {
 
@@ -10,7 +10,7 @@ internal data class PubRel(override val packetIdentifier: Short) : MqttSentPacke
 
     override val variableHeader by lazy { emptyList<Byte>() }
 
-    override val payload by lazy { packetIdentifier.toByteArray().toList() }
+    override val payload by lazy { packetIdentifier.toByteList() }
 
     override fun isResponse(receivedPacket: MqttReceivedPacket): Boolean {
         return receivedPacket is PubComp

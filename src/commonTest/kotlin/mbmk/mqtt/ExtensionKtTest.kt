@@ -1,7 +1,7 @@
 package mbmk.mqtt
 
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.io.ByteArrayInputStream
+import kotlinx.coroutines.flow.flowOf
 import mbmk.mqtt.internal.util.toDecodedInt
 import mbmk.mqtt.internal.util.toEncodedBytes
 import kotlin.test.Test
@@ -52,7 +52,7 @@ class ExtensionKtTest {
         blockThread {
             repeat(1_000_000) { number ->
                 val bytes = number.toEncodedBytes()
-                val stream = ByteArrayInputStream(bytes.toByteArray())
+                val stream = flowOf(*bytes.toTypedArray())
                 val decoded = stream.toDecodedInt()
                 assertEquals(number, decoded)
             }

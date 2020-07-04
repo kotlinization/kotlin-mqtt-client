@@ -1,20 +1,23 @@
 package mbmk.mqtt.internal.connection.packet.received
 
-import kotlinx.io.IOException
-import kotlinx.io.InputStream
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.toList
+import mbmk.mqtt.MQTTException
 import mbmk.mqtt.MqttPacket
-import mbmk.mqtt.types
-import mbmk.mqtt.internal.util.readBytes
+import mbmk.mqtt.internal.util.shr
 import mbmk.mqtt.internal.util.toDecodedInt
 import mbmk.mqtt.internal.util.toShort
+import mbmk.mqtt.types
 
 internal interface MqttReceivedPacket : MqttPacket
 
-internal suspend fun InputStream.getPacket(): MqttReceivedPacket {
-    val type = read() shr 4
+internal suspend fun Flow<Byte>.getPacket(): MqttReceivedPacket {
+    val type = take(1).first() shr 4
     val size = toDecodedInt()
-    val bytes = readBytes(size)
-    val kClass = types[type] ?: throw IOException("Unknown type.")
+    val bytes = take(size).toList()
+    val kClass = types[type.toInt()] ?: throw MQTTException("Unknown type.")
     return when (kClass) {
         ConnAck::class -> ConnAck(bytes)
         PingResp::class -> PingResp()

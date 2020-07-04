@@ -1,9 +1,9 @@
 plugins {
-    kotlin("multiplatform") version "1.3.61"
+    kotlin("multiplatform") version "1.3.72"
 }
 
-val coroutinesVersion = "1.3.3"
-val serializationVersion = "0.14.0"
+val coroutinesVersion = "1.3.7"
+val serializationVersion = "0.20.0"
 
 repositories {
     mavenCentral()
@@ -16,7 +16,8 @@ kotlin {
             dependencies {
                 implementation(kotlin("stdlib-common"))
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-common:$coroutinesVersion")
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-runtime-common:$serializationVersion")
+//                implementation("org.jetbrains.kotlinx:kotlinx-serialization-runtime-common:$serializationVersion")
+//                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-io:0.1.16")
             }
         }
         val commonTest by getting {
@@ -30,7 +31,8 @@ kotlin {
             dependencies {
                 implementation(kotlin("stdlib-jdk8"))
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-runtime:$serializationVersion")
+//                implementation("org.jetbrains.kotlinx:kotlinx-serialization-runtime:$serializationVersion")
+//                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-io-jvm:0.1.16")
             }
         }
         val jvmTest by getting {
