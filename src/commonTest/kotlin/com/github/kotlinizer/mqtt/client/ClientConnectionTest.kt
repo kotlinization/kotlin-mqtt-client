@@ -6,8 +6,9 @@ import io.mockk.Ordering
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.SpyK
 import io.mockk.verify
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collect
+import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -26,9 +27,12 @@ class ClientConnectionTest {
 
     private val connectTimeout = 10_000L
 
+    private lateinit var scope: CoroutineScope
+
     @BeforeTest
     fun setUp() {
         MockKAnnotations.init(this)
+        scope = CoroutineScope(Job())
         connectionConfig = MqttConnectionConfig(
             serverUri = "tcp://localhost:1883",
             connectionTimeout = 5,
@@ -39,7 +43,8 @@ class ClientConnectionTest {
     @Test
     @ExperimentalCoroutinesApi
     fun connectToBroker() = withBroker {
-        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
+        client = MqttClient(connectionConfig, logger)
+        client.addConnectionListener()
         client.connect()
         verify(timeout = connectTimeout, ordering = Ordering.SEQUENCE) {
             onConnection(MqttConnectionStatus.CONNECTING)
@@ -52,7 +57,8 @@ class ClientConnectionTest {
 
     @Test
     fun connectToBrokerWithTimeout() = withBroker {
-        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
+        client = MqttClient(connectionConfig, logger)
+        client.addConnectionListener()
         client.connect(10_000)
         assertEquals(MqttConnectionStatus.CONNECTED, client.connectionStatus)
         client.disconnect()
@@ -61,7 +67,8 @@ class ClientConnectionTest {
     @Test
     @ExperimentalCoroutinesApi
     fun connectToBrokerWithoutBroker() = blockThread {
-        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
+        client = MqttClient(connectionConfig, logger)
+        client.addConnectionListener()
         client.connect()
         verify(timeout = connectTimeout, ordering = Ordering.SEQUENCE) {
             onConnection(MqttConnectionStatus.CONNECTING)
@@ -73,7 +80,8 @@ class ClientConnectionTest {
     @Test
     @ExperimentalCoroutinesApi
     fun multipleConnectionsWithSameClient() = withBroker {
-        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
+        client = MqttClient(connectionConfig, logger)
+        client.addConnectionListener()
         repeat(1_000) {
             client.connect()
         }
@@ -89,7 +97,8 @@ class ClientConnectionTest {
     @Test
     fun connectToBrokerAnotherPort() = withBroker(port = 12345) {
         connectionConfig = connectionConfig.copy(serverUri = "tcp://localhost:12345")
-        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
+        client = MqttClient(connectionConfig, logger)
+        client.addConnectionListener()
         client.connect()
         verify(timeout = connectTimeout) {
             onConnection(MqttConnectionStatus.CONNECTED)
@@ -100,7 +109,8 @@ class ClientConnectionTest {
     @Test
     fun connectToBrokerWithUserPass() = withBroker(username = true) {
         connectionConfig = connectionConfig.copy(username = "user", password = "test")
-        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
+        client = MqttClient(connectionConfig, logger)
+        client.addConnectionListener()
         client.connect()
         verify(timeout = connectTimeout) {
             onConnection(MqttConnectionStatus.CONNECTED)
@@ -111,7 +121,8 @@ class ClientConnectionTest {
     @Test
     fun connectToBrokerWithWrongUserPass() = withBroker(username = true) {
         connectionConfig = connectionConfig.copy(username = "user", password = "wrong")
-        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
+        client = MqttClient(connectionConfig, logger)
+        client.addConnectionListener()
         client.connect()
         verify(timeout = connectTimeout, ordering = Ordering.SEQUENCE) {
             onConnection(MqttConnectionStatus.CONNECTING)
@@ -124,7 +135,8 @@ class ClientConnectionTest {
     @ExperimentalStdlibApi
     fun connectToBrokerWithWill() = withBroker {
         connectionConfig = connectionConfig.copy(willMessage = MqttMessage("test", "will"))
-        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
+        client = MqttClient(connectionConfig, logger)
+        client.addConnectionListener()
         client.connect()
         verify(timeout = connectTimeout) {
             onConnection(MqttConnectionStatus.CONNECTED)
@@ -135,7 +147,8 @@ class ClientConnectionTest {
     @Test
     @ExperimentalCoroutinesApi
     fun disconnectFromBroker() = withBroker {
-        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
+        client = MqttClient(connectionConfig, logger)
+        client.addConnectionListener()
         client.connect()
         verify(timeout = connectTimeout) {
             onConnection(MqttConnectionStatus.CONNECTED)
@@ -150,7 +163,8 @@ class ClientConnectionTest {
     @Test
     @ExperimentalCoroutinesApi
     fun multipleDisconnectsFromBroker() = withBroker {
-        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
+        client = MqttClient(connectionConfig, logger)
+        client.addConnectionListener()
         client.connect()
         verify(timeout = connectTimeout) {
             onConnection(MqttConnectionStatus.CONNECTED)
@@ -165,7 +179,8 @@ class ClientConnectionTest {
 
     @Test
     fun keepConnectionActive() = withBroker {
-        client = MqttClient(connectionConfig, logger, onConnectionStatusChanged = onConnection)
+        client = MqttClient(connectionConfig, logger)
+        client.addConnectionListener()
         client.connect()
         verify(timeout = connectTimeout) {
             onConnection(MqttConnectionStatus.CONNECTED)
@@ -176,4 +191,26 @@ class ClientConnectionTest {
 
         client.disconnect()
     }
+
+    @AfterTest
+    fun clear() {
+        scope.cancel()
+    }
+
+    private suspend fun MqttClient.addConnectionListener() {
+        var firstReceived = false
+        scope.launch {
+            connectionStatusStateFlow.collect {
+                if (firstReceived) {
+                    onConnection(it)
+                } else {
+                    firstReceived = true
+                }
+            }
+        }
+        while (!firstReceived) {
+            delay(10)
+        }
+    }
+
 }

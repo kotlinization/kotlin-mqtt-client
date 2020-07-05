@@ -1,11 +1,12 @@
 package com.github.kotlinizer.mqtt
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 
 /**
  * Mosquitto must be installed on device.
  */
-fun withBroker(username: Boolean = false, port: Int = 1883, block: suspend () -> Unit) {
+fun withBroker(username: Boolean = false, port: Int = 1883, block: suspend CoroutineScope.() -> Unit) {
     val file = TmpFile()
     var passwordFile: TmpFile? = null
     val process = Process(listOf("mosquitto", "-v", "-c", file.path))
@@ -23,7 +24,7 @@ fun withBroker(username: Boolean = false, port: Int = 1883, block: suspend () ->
         )
         process.start()
         blockThread {
-            block()
+            block(this)
         }
     } finally {
         process.stop()

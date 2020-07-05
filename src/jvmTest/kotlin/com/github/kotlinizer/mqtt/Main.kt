@@ -9,10 +9,7 @@ suspend fun main() {
             username = "usertest", password = "test",
             willMessage = MqttMessage("testtopic", "testmessage")
         ),
-        logger = TestLogger(),
-        onConnectionStatusChanged = {
-            println("Connection changed: $it")
-        }
+        logger = TestLogger()
     )
     val connected = client.connect()
     println("Connected: $connected")

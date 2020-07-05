@@ -1,5 +1,6 @@
 package com.github.kotlinizer.mqtt.internal
 
+import com.github.kotlinizer.mppktx.coroutines.throwIfCanceled
 import com.github.kotlinizer.mqtt.Logger
 import com.github.kotlinizer.mqtt.MqttConnectionConfig
 import com.github.kotlinizer.mqtt.internal.connection.MqttConnection
@@ -18,9 +19,8 @@ import java.net.URI
 
 internal class TcpMqttConnection(
     connectionConfig: MqttConnectionConfig,
-    logger: Logger?,
-    onConnectionChanged: (Boolean) -> Unit
-) : MqttConnection(connectionConfig, logger, onConnectionChanged) {
+    logger: Logger?
+) : MqttConnection(connectionConfig, logger) {
 
     override val receiveChannel = Channel<Byte>(Channel.RENDEZVOUS)
 
@@ -46,9 +46,17 @@ internal class TcpMqttConnection(
         }
         localScope.launch(IO) {
             while (isActive) {
-                val byte = inputStream.read().toByte()
-                if (byte != (-1).toByte()) {
-                    receiveChannel.send(byte)
+                try {
+                    val byte = inputStream.read().toByte()
+                    if (byte != (-1).toByte()) {
+                        receiveChannel.send(byte)
+                    }
+                } catch (t: Throwable) {
+                    t.throwIfCanceled()
+                    logger?.e(t) {
+                        "Error occurred while reading from stream."
+                    }
+                    connectionBroken()
                 }
             }
         }
@@ -56,7 +64,15 @@ internal class TcpMqttConnection(
             while (isActive) {
                 sendChannel.receiveAsFlow().collect {
                     withContext(IO) {
-                        outputStream.write(it.toInt())
+                        try {
+                            outputStream.write(it.toInt())
+                        } catch (t: Throwable) {
+                            t.throwIfCanceled()
+                            logger?.e(t) {
+                                "Error occurred while writing to stream."
+                            }
+                            connectionBroken()
+                        }
                     }
                 }
             }

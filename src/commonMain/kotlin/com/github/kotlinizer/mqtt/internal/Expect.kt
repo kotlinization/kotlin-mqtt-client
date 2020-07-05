@@ -7,8 +7,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 
 internal expect fun createConnection(
     connectionConfig: MqttConnectionConfig,
-    logger: Logger?,
-    onConnectionChanged: (Boolean) -> Unit
+    logger: Logger?
 ): MqttConnection
 
 internal expect val mqttDispatcher: CoroutineDispatcher

@@ -12,34 +12,36 @@ import com.github.kotlinizer.mqtt.internal.connection.packet.sent.MqttSentPacket
 import com.github.kotlinizer.mqtt.internal.connection.packet.sent.PubRel
 import com.github.kotlinizer.mqtt.internal.createConnection
 import com.github.kotlinizer.mqtt.internal.mqttDispatcher
-import com.github.kotlinizer.mqtt.internal.util.changeable
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 class MqttClient(
     val connectionConfig: MqttConnectionConfig,
     private val logger: Logger?,
-    private val messageDatabase: MessageDatabase = MemoryMessageDatabase(logger),
-    onConnectionStatusChanged: (MqttConnectionStatus) -> Unit = {}
+    private val messageDatabase: MessageDatabase = MemoryMessageDatabase(logger)
 ) {
 
-    var connectionStatus: MqttConnectionStatus by changeable(DISCONNECTED) { newValue ->
-        logger?.t { "Connection status changed: $newValue" }
-        runCatching {
-            onConnectionStatusChanged(newValue)
-        }.onFailure {
-            logger?.e(it) { "Error while invoking callback." }
-        }
-    }
-        private set
+    val connectionStatus: MqttConnectionStatus
+        get() = connectionStatusStateFlow.value
+
+    val connectionStatusStateFlow: StateFlow<MqttConnectionStatus>
+        get() = mutableConnectionStatusFlow
+
+    private val mutableConnectionStatusFlow = MutableStateFlow(DISCONNECTED)
 
     private val connection by lazy {
-        createConnection(connectionConfig, logger) {
-            localScope.launch {
-                updateStatus(it)
+        createConnection(connectionConfig, logger)
+            .also { mqttConnection ->
+                localScope.launch {
+                    mqttConnection.connectedStateFlow.collect {
+                        updateStatus(it)
+                    }
+                }
             }
-        }
     }
 
     private val packetTracker by lazy {
@@ -54,8 +56,8 @@ class MqttClient(
         localScope.launch {
             connectionMutex.withLock {
                 if (connectionStatus == CONNECTED || connectionStatus == CONNECTING || connectionStatus == ESTABLISHING) {
-                    connectionStatus = ERROR
-                    updateStatus(connection.connected)
+                    mutableConnectionStatusFlow.value = ERROR
+                    updateStatus(connection.connectedStateFlow.value)
                 }
             }
         }
@@ -70,16 +72,16 @@ class MqttClient(
             connectionMutex.withLock {
                 try {
                     if (connectionStatus == DISCONNECTED || connectionStatus == ERROR) {
-                        connectionStatus = CONNECTING
+                        mutableConnectionStatusFlow.value = CONNECTING
                         connection.connect()
-                        connectionStatus = ESTABLISHING
+                        mutableConnectionStatusFlow.value = ESTABLISHING
                         packetTracker.startReceiving()
                         packetTracker.writePacket(Connect(connectionConfig))
                     }
                 } catch (t: Throwable) {
                     logger?.e(t) { "Unable to connect." }
-                    connectionStatus = ERROR
-                    updateStatus(connection.connected)
+                    mutableConnectionStatusFlow.value = ERROR
+                    updateStatus(connection.connectedStateFlow.value)
                 }
             }
         }
@@ -100,15 +102,15 @@ class MqttClient(
         try {
             connectionMutex.withLock {
                 if (connectionStatus == CONNECTED) {
-                    connectionStatus = DISCONNECTING
+                    mutableConnectionStatusFlow.value = DISCONNECTING
                     packetTracker.writePacket(Disconnect())
                     packetTracker.stopReceiving()
                     connection.disconnect()
-                    connectionStatus = DISCONNECTED
+                    mutableConnectionStatusFlow.value = DISCONNECTED
                 }
             }
         } catch (t: Throwable) {
-            connectionStatus = ERROR
+            mutableConnectionStatusFlow.value = ERROR
             logger?.e(t) { "Error while disconnecting." }
         }
     }
@@ -123,7 +125,7 @@ class MqttClient(
         try {
             packetTracker.writePacket(packet)
         } catch (t: Throwable) {
-            connectionStatus = ERROR
+            mutableConnectionStatusFlow.value = ERROR
             logger?.e(t) { "Unable to publish packet: $packet." }
         }
     }
@@ -132,12 +134,12 @@ class MqttClient(
         when (connectionStatus) {
             CONNECTING -> {
                 if (connected) {
-                    connectionStatus = ESTABLISHING
+                    mutableConnectionStatusFlow.value = ESTABLISHING
                 }
             }
             ESTABLISHING -> {
                 if (!connected) {
-                    connectionStatus = DISCONNECTED
+                    mutableConnectionStatusFlow.value = DISCONNECTED
                 }
             }
             ERROR -> {
@@ -145,7 +147,7 @@ class MqttClient(
                 if (connected) {
                     connection.disconnect()
                 } else {
-                    connectionStatus = DISCONNECTED
+                    mutableConnectionStatusFlow.value = DISCONNECTED
                 }
             }
             else -> {
@@ -166,17 +168,17 @@ class MqttClient(
     private fun connAckReceived(connAck: ConnAck) {
         localScope.launch {
             connectionMutex.withLock {
-                if (connectionStatus == ESTABLISHING) {
+                mutableConnectionStatusFlow.value = if (connectionStatus == ESTABLISHING) {
                     if (connAck.error == null) {
-                        connectionStatus = CONNECTED
                         logger?.t { "Connection established, now active." }
+                        CONNECTED
                     } else {
-                        connectionStatus = ERROR
                         logger?.e(connAck.error) { "Error ConnAck received." }
+                        ERROR
                     }
                 } else {
-                    connectionStatus = ERROR
                     logger?.e { "Invalid state: Received ConnAck while not in establishing connection." }
+                    ERROR
                 }
             }
         }

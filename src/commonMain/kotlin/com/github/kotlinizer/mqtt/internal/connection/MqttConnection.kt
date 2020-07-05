@@ -1,27 +1,24 @@
 package com.github.kotlinizer.mqtt.internal.connection
 
-import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.coroutines.channels.SendChannel
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import com.github.kotlinizer.mqtt.Logger
 import com.github.kotlinizer.mqtt.MqttConnectionConfig
 import com.github.kotlinizer.mqtt.internal.connection.packet.received.MqttReceivedPacket
 import com.github.kotlinizer.mqtt.internal.connection.packet.sent.MqttSentPacket
-import com.github.kotlinizer.mqtt.internal.util.changeable
 import com.github.kotlinizer.mqtt.internal.util.getPacket
+import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.channels.SendChannel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 internal abstract class MqttConnection(
     val connectionConfig: MqttConnectionConfig,
-    protected val logger: Logger?,
-    private val onConnectionChanged: (Boolean) -> Unit
+    protected val logger: Logger?
 ) {
 
-    var connected by changeable(false) { newValue ->
-        logger?.d { "Connection state changed. Connected: $newValue." }
-        onConnectionChanged(newValue)
-    }
-        private set
+    val connectedStateFlow: StateFlow<Boolean>
+        get() = mutableConnectedFlow
 
     protected abstract val receiveChannel: ReceiveChannel<Byte>
 
@@ -31,27 +28,29 @@ internal abstract class MqttConnection(
 
     private val sendMutex = Mutex()
 
+    private val mutableConnectedFlow = MutableStateFlow(false)
+
     private val receiveMutex = Mutex()
 
     suspend fun connect() {
         connectionMutex.withLock {
-            if (connected) {
+            if (mutableConnectedFlow.value) {
                 logger?.t { "Client is already connected." }
                 return
             }
             establishConnection(connectionConfig.serverUri, connectionConfig.connectionTimeoutMilliseconds)
-            connected = true
+            mutableConnectedFlow.value = true
         }
     }
 
     suspend fun disconnect() {
         connectionMutex.withLock {
-            if (!connected) {
+            if (!mutableConnectedFlow.value) {
                 logger?.t { "Client is already disconnected." }
                 return
             }
             clearConnection()
-            connected = false
+            mutableConnectedFlow.value = false
         }
     }
 
@@ -75,9 +74,11 @@ internal abstract class MqttConnection(
         }
     }
 
-    /**
-     * @throws Throwable
-     */
+    protected fun connectionBroken() {
+        clearConnection()
+        mutableConnectedFlow.value = false
+    }
+
     protected abstract suspend fun establishConnection(serverUri: String, timeout: Long)
 
     protected abstract fun clearConnection()

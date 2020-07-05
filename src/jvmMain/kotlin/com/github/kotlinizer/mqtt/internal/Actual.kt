@@ -9,9 +9,6 @@ internal actual val mqttDispatcher = Dispatchers.IO
 
 internal actual fun createConnection(
     connectionConfig: MqttConnectionConfig,
-    logger: Logger?,
-    onConnectionChanged: (Boolean) -> Unit
-): MqttConnection {
+    logger: Logger?
+): MqttConnection = TcpMqttConnection(connectionConfig, logger)
 
-    return TcpMqttConnection(connectionConfig, logger, onConnectionChanged)
-}
