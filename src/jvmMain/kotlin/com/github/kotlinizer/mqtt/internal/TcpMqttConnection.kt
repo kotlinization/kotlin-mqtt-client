@@ -6,7 +6,6 @@ import com.github.kotlinizer.mqtt.MqttConnectionConfig
 import com.github.kotlinizer.mqtt.internal.connection.MqttConnection
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.IO
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.receiveAsFlow
 import java.io.ByteArrayInputStream
@@ -21,10 +20,6 @@ internal class TcpMqttConnection(
     connectionConfig: MqttConnectionConfig,
     logger: Logger?
 ) : MqttConnection(connectionConfig, logger) {
-
-    override val receiveChannel = Channel<Byte>(Channel.RENDEZVOUS)
-
-    override val sendChannel = Channel<Byte>(Channel.RENDEZVOUS)
 
     private var socket = Socket()
 
@@ -44,12 +39,15 @@ internal class TcpMqttConnection(
             inputStream = socket.getInputStream()
             outputStream = socket.getOutputStream()
         }
+        logger?.t {
+            "Connection established."
+        }
         localScope.launch(IO) {
             while (isActive) {
                 try {
                     val byte = inputStream.read().toByte()
                     if (byte != (-1).toByte()) {
-                        receiveChannel.send(byte)
+                        brokerToClientChannel.send(byte)
                     }
                 } catch (t: Throwable) {
                     t.throwIfCanceled()
@@ -62,7 +60,7 @@ internal class TcpMqttConnection(
         }
         localScope.launch(IO) {
             while (isActive) {
-                sendChannel.receiveAsFlow().collect {
+                clientToBrokerChannel.receiveAsFlow().collect {
                     withContext(IO) {
                         try {
                             outputStream.write(it.toInt())

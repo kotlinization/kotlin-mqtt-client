@@ -1,9 +1,9 @@
 package com.github.kotlinizer.mqtt
 
+import com.github.kotlinizer.mppktx.coroutines.throwIfCanceled
 import com.github.kotlinizer.mqtt.MqttConnectionStatus.*
 import com.github.kotlinizer.mqtt.database.MemoryMessageDatabase
 import com.github.kotlinizer.mqtt.database.MessageDatabase
-import com.github.kotlinizer.mqtt.internal.PacketTracker
 import com.github.kotlinizer.mqtt.internal.connection.packet.Publish
 import com.github.kotlinizer.mqtt.internal.connection.packet.received.*
 import com.github.kotlinizer.mqtt.internal.connection.packet.sent.Connect
@@ -35,37 +35,43 @@ class MqttClient(
 
     private val connection by lazy {
         createConnection(connectionConfig, logger)
-            .also { mqttConnection ->
-                localScope.launch {
-                    mqttConnection.connectedStateFlow.collect {
-                        updateStatus(it)
-                    }
-                }
-            }
-    }
-
-    private val packetTracker by lazy {
-        PacketTracker(
-            connection, messageDatabase, logger,
-            onError = this::onPacketTrackerError,
-            onPacketReceived = this::packetReceived
-        )
-    }
-
-    private fun onPacketTrackerError() {
-        localScope.launch {
-            connectionMutex.withLock {
-                if (connectionStatus == CONNECTED || connectionStatus == CONNECTING || connectionStatus == ESTABLISHING) {
-                    mutableConnectionStatusFlow.value = ERROR
-                    updateStatus(connection.connectedStateFlow.value)
-                }
-            }
-        }
     }
 
     private val connectionMutex = Mutex()
 
     private val localScope = CoroutineScope(mqttDispatcher + SupervisorJob())
+
+    init {
+        localScope.launch(mqttDispatcher) {
+            while (isActive) {
+                try {
+                    connection.packetFlow.collect {
+                        packetReceived(it)
+                    }
+                } catch (t: Throwable) {
+                    t.throwIfCanceled()
+                    logger?.e(t) {
+                        "Error while receiving packet."
+                    }
+                    mutableConnectionStatusFlow.value = ERROR
+                    updateStatus(connection.connectedStateFlow.value)
+                }
+            }
+        }
+        localScope.launch(mqttDispatcher) {
+            connection.connectedStateFlow.collect {
+                updateStatus(it)
+            }
+        }
+        localScope.launch(mqttDispatcher) {
+            localScope.launch(mqttDispatcher) {
+                connection.errorFlow.collect { error ->
+                    logger?.e { error }
+                    errorOccurred()
+                }
+            }
+        }
+    }
 
     fun connect() {
         localScope.launch {
@@ -75,8 +81,7 @@ class MqttClient(
                         mutableConnectionStatusFlow.value = CONNECTING
                         connection.connect()
                         mutableConnectionStatusFlow.value = ESTABLISHING
-                        packetTracker.startReceiving()
-                        packetTracker.writePacket(Connect(connectionConfig))
+                        writePacket(Connect(connectionConfig))
                     }
                 } catch (t: Throwable) {
                     logger?.e(t) { "Unable to connect." }
@@ -103,8 +108,7 @@ class MqttClient(
             connectionMutex.withLock {
                 if (connectionStatus == CONNECTED) {
                     mutableConnectionStatusFlow.value = DISCONNECTING
-                    packetTracker.writePacket(Disconnect())
-                    packetTracker.stopReceiving()
+                    writePacket(Disconnect())
                     connection.disconnect()
                     mutableConnectionStatusFlow.value = DISCONNECTED
                 }
@@ -123,7 +127,7 @@ class MqttClient(
 
     private suspend fun publishPacket(packet: MqttSentPacket) {
         try {
-            packetTracker.writePacket(packet)
+            writePacket(packet)
         } catch (t: Throwable) {
             mutableConnectionStatusFlow.value = ERROR
             logger?.e(t) { "Unable to publish packet: $packet." }
@@ -143,16 +147,20 @@ class MqttClient(
                 }
             }
             ERROR -> {
-                packetTracker.stopReceiving()
                 if (connected) {
                     connection.disconnect()
-                } else {
-                    mutableConnectionStatusFlow.value = DISCONNECTED
                 }
             }
             else -> {
                 // Do nothing
             }
+        }
+    }
+
+    private suspend fun writePacket(mqttPacket: MqttSentPacket) {
+        withContext(NonCancellable) {
+            val savedPacket = messageDatabase.savePacket(mqttPacket)
+            connection.writePacket(savedPacket)
         }
     }
 
@@ -170,14 +178,20 @@ class MqttClient(
             connectionMutex.withLock {
                 mutableConnectionStatusFlow.value = if (connectionStatus == ESTABLISHING) {
                     if (connAck.error == null) {
-                        logger?.t { "Connection established, now active." }
+                        logger?.t {
+                            "Connection established, now active."
+                        }
                         CONNECTED
                     } else {
-                        logger?.e(connAck.error) { "Error ConnAck received." }
+                        logger?.e(connAck.error) {
+                            "Error ConnAck received."
+                        }
                         ERROR
                     }
                 } else {
-                    logger?.e { "Invalid state: Received ConnAck while not in establishing connection." }
+                    logger?.e {
+                        "Invalid state: Received ConnAck while not in establishing connection."
+                    }
                     ERROR
                 }
             }
@@ -193,6 +207,15 @@ class MqttClient(
     private fun pubRecReceived(pubRec: PubRec) {
         localScope.launch {
             publishPacket(PubRel(pubRec.packetIdentifier))
+        }
+    }
+
+    private suspend fun errorOccurred() {
+        connectionMutex.withLock {
+            if (connectionStatus == CONNECTED || connectionStatus == CONNECTING || connectionStatus == ESTABLISHING) {
+                mutableConnectionStatusFlow.value = ERROR
+                updateStatus(connection.connectedStateFlow.value)
+            }
         }
     }
 }

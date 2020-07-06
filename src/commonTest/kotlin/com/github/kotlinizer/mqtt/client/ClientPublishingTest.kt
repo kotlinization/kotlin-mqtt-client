@@ -64,8 +64,8 @@ class ClientPublishingTest {
         client = MqttClient(connectionConfig, logger)
         client.connect(10_000)
         val jobs = mutableListOf<Job>()
-        repeat(10_00) {
-            jobs += GlobalScope.launch {
+        repeat(1_000) {
+            jobs += launch {
                 client.publishMessage(
                     MqttMessage(
                         "test",

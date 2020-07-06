@@ -73,7 +73,6 @@ class ClientConnectionTest {
         verify(timeout = connectTimeout, ordering = Ordering.SEQUENCE) {
             onConnection(MqttConnectionStatus.CONNECTING)
             onConnection(MqttConnectionStatus.ERROR)
-            onConnection(MqttConnectionStatus.DISCONNECTED)
         }
     }
 
