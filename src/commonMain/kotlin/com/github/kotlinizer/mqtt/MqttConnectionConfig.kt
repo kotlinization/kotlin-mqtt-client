@@ -14,5 +14,11 @@ data class MqttConnectionConfig(
     val connectionTimeout: Int = 30
 ) {
 
-    internal val connectionTimeoutMilliseconds by lazy { connectionTimeout * 1000L }
+    internal val connectionTimeoutMilliseconds by lazy {
+        connectionTimeout * 1000L
+    }
+
+    internal val halfKeepAliveMilliseconds by lazy {
+        connectionTimeoutMilliseconds / 2
+    }
 }

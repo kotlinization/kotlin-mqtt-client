@@ -1,13 +1,14 @@
 package com.github.kotlinizer.mqtt.client
 
 import com.github.kotlinizer.mqtt.*
+import com.github.kotlinizer.mqtt.internal.mqttDispatcher
 import io.mockk.MockKAnnotations
 import io.mockk.Ordering
 import io.mockk.impl.annotations.MockK
 import io.mockk.impl.annotations.SpyK
 import io.mockk.verify
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.collectLatest
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -198,12 +199,14 @@ class ClientConnectionTest {
 
     private suspend fun MqttClient.addConnectionListener() {
         var firstReceived = false
-        scope.launch {
-            connectionStatusStateFlow.collect {
-                if (firstReceived) {
-                    onConnection(it)
-                } else {
-                    firstReceived = true
+        scope.launch(mqttDispatcher) {
+            connectionStatusStateFlow.collectLatest {
+                scope.launch {
+                    if (firstReceived) {
+                        onConnection(it)
+                    } else {
+                        firstReceived = true
+                    }
                 }
             }
         }

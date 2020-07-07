@@ -7,138 +7,69 @@ import com.github.kotlinizer.mqtt.internal.connection.packet.received.PingResp
 import com.github.kotlinizer.mqtt.internal.connection.packet.sent.MqttSentPacket
 import com.github.kotlinizer.mqtt.internal.connection.packet.sent.PingReq
 import com.github.kotlinizer.mqtt.internal.util.getPacket
-import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.ProducerScope
-import kotlinx.coroutines.channels.ReceiveChannel
-import kotlinx.coroutines.channels.SendChannel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.channels.ConflatedBroadcastChannel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 internal abstract class MqttConnection(
-    private val connectionConfig: MqttConnectionConfig,
+    protected val connectionConfig: MqttConnectionConfig,
     protected val logger: Logger?
 ) {
 
-    val errorFlow: Flow<String>
-        get() = channelFlow {
-            var pingJob = createPingJob(this)
-            var packetTrackerJob: Job? = null
-            connectedStateFlow.collect { connected ->
-                packetTrackerJob?.cancel()
-                if (connected) {
-                    packetTrackerJob = launch {
-                        while (isActive) {
-                            packetSentChannel.receive()
-                            pingJob.cancelAndJoin()
-                            pingJob = createPingJob(this@channelFlow)
-                        }
-                    }
-                } else {
-                    pingJob.cancelAndJoin()
-                }
+    val packetTransitFlow: Flow<Unit>
+        get() = packetTransitChannel.asFlow()
+
+    val packetFlow: Flow<MqttReceivedPacket> = channelFlow {
+        val channel = Channel<Byte>(Channel.RENDEZVOUS)
+        launch {
+            brokerToClientFlow.collect {
+                channel.send(it)
             }
         }
-
-    val packetFlow: Flow<MqttReceivedPacket>
-        get() = flow {
-            while (true) {
-                val packet = readPacket()
-                logger?.t { "Packet received: $packet." }
+        launch {
+            while (isActive) {
+                val packet = channel.getPacket().also {
+                    packetTransitChannel.send(Unit)
+                }
+                logger?.t {
+                    "Packet received: $packet."
+                }
                 if (packet !is PingResp) {
-                    emit(packet)
+                    send(packet)
                 }
             }
         }
+    }
 
-    val connectedStateFlow: StateFlow<Boolean>
-        get() = mutableConnectedFlow
-
-    protected val clientToBrokerChannel: ReceiveChannel<Byte>
-        get() = sendingChannel
-
-    protected val brokerToClientChannel: SendChannel<Byte>
-        get() = receivingChannel
-
-    private val connectionMutex = Mutex()
+    protected abstract val brokerToClientFlow: Flow<Byte>
 
     private val sendMutex = Mutex()
 
-    private val mutableConnectedFlow = MutableStateFlow(false)
+    private val packetTransitChannel = ConflatedBroadcastChannel<Unit>()
 
-    private val receiveMutex = Mutex()
+    abstract suspend fun connect()
 
-    private val sendingChannel = Channel<Byte>(Channel.RENDEZVOUS)
-
-    private val receivingChannel = Channel<Byte>(Channel.RENDEZVOUS)
-
-    private val packetSentChannel = Channel<Unit>(Channel.RENDEZVOUS)
-
-    suspend fun connect() {
-        connectionMutex.withLock {
-            if (mutableConnectedFlow.value) {
-                logger?.t { "Client is already connected." }
-                return
-            }
-            establishConnection(connectionConfig.serverUri, connectionConfig.connectionTimeoutMilliseconds)
-            mutableConnectedFlow.value = true
-        }
-    }
-
-    suspend fun disconnect() {
-        connectionMutex.withLock {
-            if (!mutableConnectedFlow.value) {
-                logger?.t { "Client is already disconnected." }
-                return
-            }
-            clearConnection()
-            mutableConnectedFlow.value = false
-        }
-    }
+    abstract suspend fun disconnectAndClear()
 
     /**
      * Sends [packet] to broker.
      */
     suspend fun writePacket(packet: MqttSentPacket) {
         sendMutex.withLock {
-            packet.pack().forEach {
-                sendingChannel.send(it)
-            }
+            writeBytes(packet.pack())
         }
         logger?.t { "Packet written: $packet." }
-        packetSentChannel.send(Unit)
-    }
-
-    /**
-     * Waits until new packet is received from broker.
-     */
-    suspend fun readPacket(): MqttReceivedPacket {
-        return receiveMutex.withLock {
-            receivingChannel.getPacket()
-        }.also {
-            packetSentChannel.send(Unit)
+        if (packet !is PingReq) {
+            packetTransitChannel.send(Unit)
         }
     }
 
-    protected fun connectionBroken() {
-        clearConnection()
-        mutableConnectedFlow.value = false
-    }
-
-    protected abstract suspend fun establishConnection(serverUri: String, timeout: Long)
-
-    protected abstract fun clearConnection()
-
-    private fun createPingJob(producerScope: ProducerScope<String>): Job {
-        return producerScope.launch {
-            val timeout = connectionConfig.keepAlive * 500L
-            delay(timeout)
-            writePacket(PingReq())
-            delay(timeout)
-            if (isActive) {
-                producerScope.send("Ping request timed out.")
-            }
-        }
-    }
+    protected abstract suspend fun writeBytes(bytes: List<Byte>)
 }

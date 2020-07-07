@@ -1,15 +1,13 @@
 package com.github.kotlinizer.mqtt.internal
 
-import com.github.kotlinizer.mppktx.coroutines.throwIfCanceled
 import com.github.kotlinizer.mqtt.Logger
 import com.github.kotlinizer.mqtt.MqttConnectionConfig
 import com.github.kotlinizer.mqtt.internal.connection.MqttConnection
-import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.IO
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.receiveAsFlow
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.InetSocketAddress
@@ -21,70 +19,54 @@ internal class TcpMqttConnection(
     logger: Logger?
 ) : MqttConnection(connectionConfig, logger) {
 
-    private var socket = Socket()
+    private val socket: Socket by lazy {
+        Socket()
+    }
 
-    private var inputStream: InputStream = ByteArrayInputStream(ByteArray(0))
+    private lateinit var inputStream: InputStream
 
-    private var outputStream: OutputStream = ByteArrayOutputStream(0)
+    private lateinit var outputStream: OutputStream
 
-    private var localScope: CoroutineScope = CoroutineScope(Job() + IO)
+    override val brokerToClientFlow: Flow<Byte>
+        get() = channelFlow {
+            withContext(IO) {
+                while (isActive) {
+                    val byte = inputStream.read().toByte()
+                    if (byte != (-1).toByte()) {
+                        send(byte)
+                    }
+                }
+            }
+        }
 
-    override suspend fun establishConnection(serverUri: String, timeout: Long) {
-        clearConnection()
-        localScope = CoroutineScope(Job() + IO)
-        val uri = URI(serverUri)
-        socket = Socket()
+    override suspend fun connect() {
+        val uri = URI(connectionConfig.serverUri)
         withContext(IO) {
-            socket.connect(InetSocketAddress(uri.host, uri.port), timeout.toInt())
+            socket.connect(
+                InetSocketAddress(uri.host, uri.port),
+                connectionConfig.connectionTimeoutMilliseconds.toInt()
+            )
             inputStream = socket.getInputStream()
             outputStream = socket.getOutputStream()
         }
         logger?.t {
             "Connection established."
         }
-        localScope.launch(IO) {
-            while (isActive) {
-                try {
-                    val byte = inputStream.read().toByte()
-                    if (byte != (-1).toByte()) {
-                        brokerToClientChannel.send(byte)
-                    }
-                } catch (t: Throwable) {
-                    t.throwIfCanceled()
-                    logger?.e(t) {
-                        "Error occurred while reading from stream."
-                    }
-                    connectionBroken()
-                }
-            }
-        }
-        localScope.launch(IO) {
-            while (isActive) {
-                clientToBrokerChannel.receiveAsFlow().collect {
-                    withContext(IO) {
-                        try {
-                            outputStream.write(it.toInt())
-                        } catch (t: Throwable) {
-                            t.throwIfCanceled()
-                            logger?.e(t) {
-                                "Error occurred while writing to stream."
-                            }
-                            connectionBroken()
-                        }
-                    }
-                }
-            }
-        }
     }
 
-    override fun clearConnection() {
-        runCatching {
+    override suspend fun disconnectAndClear() {
+        withContext(IO) {
             socket.use {
                 outputStream.flush()
                 socket.shutdownInput()
                 socket.shutdownOutput()
             }
         }
-        localScope.cancel()
+    }
+
+    override suspend fun writeBytes(bytes: List<Byte>) {
+        withContext(IO) {
+            outputStream.write(bytes.toByteArray())
+        }
     }
 }

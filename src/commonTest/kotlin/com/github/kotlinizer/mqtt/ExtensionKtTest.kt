@@ -53,7 +53,7 @@ class ExtensionKtTest {
     @ExperimentalCoroutinesApi
     fun encodeDecode() {
         blockThread {
-            repeat(1_000_000) { number ->
+            repeat(100_000) { number ->
                 val bytes = number.toEncodedBytes()
                 val stream = flowOf(*bytes.toTypedArray()).broadcastIn(this).openSubscription()
                 val decoded = stream.toDecodedInt()
