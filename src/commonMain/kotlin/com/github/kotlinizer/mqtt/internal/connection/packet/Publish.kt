@@ -16,6 +16,11 @@ internal data class Publish(
     override val packetIdentifier: Short
 ) : MqttSentPacket(), MqttReceivedPacket {
 
+    constructor(bytes: List<Byte>) : this(
+        MqttMessage("", bytes),
+        0.toShort()
+    )
+
     override val fixedHeader: Byte by lazy {
         mqttMessage.qos.ordinal.toByte().shl(1).or(if (mqttMessage.retain) 0b0000_0001 else 0)
     }

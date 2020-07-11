@@ -22,6 +22,7 @@ internal val types = mapOf(
     6 to PubRel::class,
     7 to PubComp::class,
     8 to Subscribe::class,
+    9 to SubAck::class,
     12 to PingReq::class,
     13 to PingResp::class,
     14 to Disconnect::class

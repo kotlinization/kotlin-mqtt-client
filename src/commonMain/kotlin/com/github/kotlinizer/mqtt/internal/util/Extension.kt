@@ -1,6 +1,7 @@
 package com.github.kotlinizer.mqtt.internal.util
 
 import com.github.kotlinizer.mqtt.MQTTException
+import com.github.kotlinizer.mqtt.internal.connection.packet.Publish
 import com.github.kotlinizer.mqtt.internal.connection.packet.received.*
 import com.github.kotlinizer.mqtt.types
 import kotlinx.coroutines.channels.ReceiveChannel
@@ -72,6 +73,8 @@ internal suspend fun ReceiveChannel<Byte>.getPacket(): MqttReceivedPacket {
         PubAck::class -> PubAck(bytes.toShort())
         PubRec::class -> PubRec(bytes.toShort())
         PubComp::class -> PubComp(bytes.toShort())
+        SubAck::class -> SubAck(bytes)
+        Publish::class -> Publish(bytes)
         else -> throw IllegalArgumentException("Unknown class: $kClass")
     }
 }

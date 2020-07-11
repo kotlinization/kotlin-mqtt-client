@@ -4,6 +4,8 @@ import com.github.kotlinizer.mppktx.coroutines.throwIfCanceled
 import com.github.kotlinizer.mqtt.MqttConnectionStatus.*
 import com.github.kotlinizer.mqtt.database.MemoryMessageDatabase
 import com.github.kotlinizer.mqtt.database.MessageDatabase
+import com.github.kotlinizer.mqtt.internal.PackageReceiver
+import com.github.kotlinizer.mqtt.internal.PingRequestTracker
 import com.github.kotlinizer.mqtt.internal.connection.MqttConnection
 import com.github.kotlinizer.mqtt.internal.connection.packet.Publish
 import com.github.kotlinizer.mqtt.internal.connection.packet.received.*
@@ -11,7 +13,8 @@ import com.github.kotlinizer.mqtt.internal.connection.packet.sent.*
 import com.github.kotlinizer.mqtt.internal.createConnection
 import com.github.kotlinizer.mqtt.internal.mqttDispatcher
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -29,46 +32,28 @@ class MqttClient(
 
     private val mutableConnectionStatusFlow = MutableStateFlow(DISCONNECTED)
 
-    private val connectionStateFlow = MutableStateFlow<MqttConnection?>(null)
+    private val connectionMutableStateFlow = MutableStateFlow<MqttConnection?>(null)
 
     private val connectionMutex = Mutex()
 
     private val localScope = CoroutineScope(mqttDispatcher + SupervisorJob())
 
     init {
-        localScope.launch(mqttDispatcher) {
-            connectionStateFlow
-                .filterNotNull()
-                .collect { mqttConnection ->
-                    try {
-                        mqttConnection.packetFlow
-                            .collect { packet ->
-                                packetReceived(packet)
-                            }
-                    } catch (t: Throwable) {
-                        t.throwIfCanceled()
-                        logger?.e(t) {
-                            "Error while receiving packet."
-                        }
-                        errorOccurred()
-                    }
-                }
-        }
-        localScope.launch(mqttDispatcher) {
-            connectionStateFlow
-                .filterNotNull()
-                .combine(connectionStatusStateFlow) { connection, status ->
-                    connection to status
-                }.collectLatest { (connection, status) ->
-                    if (status != ESTABLISHING && status != CONNECTED) return@collectLatest
-                    connection.packetTransitFlow
-                        .collectLatest {
-                            delay(connectionConfig.halfKeepAliveMilliseconds)
-                            publishPacket(PingReq())
-                            delay(connectionConfig.halfKeepAliveMilliseconds)
-                            errorOccurred()
-                        }
-                }
+        PackageReceiver(
+            localScope,
+            connectionMutableStateFlow,
+            logger,
+            this::errorOccurred,
+            this::packetReceived
+        )
+        PingRequestTracker(
+            localScope,
+            connectionConfig,
+            connectionMutableStateFlow,
+            connectionStatusStateFlow,
+            this::errorOccurred
+        ) {
+            publishPacket(PingReq())
         }
     }
 
@@ -78,7 +63,7 @@ class MqttClient(
                 connectionMutex.withLock {
                     if (connectionStatus != DISCONNECTED && connectionStatus != ERROR) return@withLock
                     mutableConnectionStatusFlow.value = CONNECTING
-                    connectionStateFlow.value = createConnection(connectionConfig, logger).also { connection ->
+                    connectionMutableStateFlow.value = createConnection(connectionConfig, logger).also { connection ->
                         connection.connect()
                     }
                     mutableConnectionStatusFlow.value = ESTABLISHING
@@ -108,8 +93,8 @@ class MqttClient(
                 if (connectionStatus == CONNECTED) {
                     mutableConnectionStatusFlow.value = DISCONNECTING
                     writePacket(Disconnect())
-                    connectionStateFlow.value?.disconnectAndClear()
-                    connectionStateFlow.value = null
+                    connectionMutableStateFlow.value?.disconnectAndClear()
+                    connectionMutableStateFlow.value = null
                     mutableConnectionStatusFlow.value = DISCONNECTED
                 }
             }
@@ -122,6 +107,12 @@ class MqttClient(
     fun publishMessage(message: MqttMessage) {
         localScope.launch {
             publishPacket(Publish(message, 0))
+        }
+    }
+
+    fun subscribe(topic: String) {
+        localScope.launch {
+            publishPacket(Subscribe(0, mapOf(topic to MqttQos.AT_LEAST_ONCE)))
         }
     }
 
@@ -138,7 +129,7 @@ class MqttClient(
     private suspend fun writePacket(mqttPacket: MqttSentPacket) {
         withContext(NonCancellable) {
             val savedPacket = messageDatabase.savePacket(mqttPacket)
-            connectionStateFlow.value?.writePacket(savedPacket)
+            connectionMutableStateFlow.value?.writePacket(savedPacket)
         }
     }
 
@@ -147,6 +138,13 @@ class MqttClient(
             is ConnAck -> connAckReceived(mqttReceivedPacket)
             is PubAck, is PubComp -> packetCompleted(mqttReceivedPacket)
             is PubRec -> pubRecReceived(mqttReceivedPacket)
+            is SubAck -> {
+            }
+            is Publish ->{
+                logger?.t {
+                    mqttReceivedPacket.mqttMessage.message.toTypedArray().contentDeepToString()
+                }
+            }
             else -> logger?.e { "Invalid packet received: $mqttReceivedPacket" }
         }
     }
@@ -190,8 +188,8 @@ class MqttClient(
 
     private suspend fun errorOccurred() {
         connectionMutex.withLock {
-            connectionStateFlow.value?.disconnectAndClear()
-            connectionStateFlow.value = null
+            connectionMutableStateFlow.value?.disconnectAndClear()
+            connectionMutableStateFlow.value = null
             mutableConnectionStatusFlow.value = ERROR
         }
     }

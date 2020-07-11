@@ -47,9 +47,7 @@ class ClientConnectionTest {
         client = MqttClient(connectionConfig, logger)
         client.addConnectionListener()
         client.connect()
-        verify(timeout = connectTimeout, ordering = Ordering.SEQUENCE) {
-            onConnection(MqttConnectionStatus.CONNECTING)
-            onConnection(MqttConnectionStatus.ESTABLISHING)
+        verify(timeout = connectTimeout) {
             onConnection(MqttConnectionStatus.CONNECTED)
         }
         assertEquals(MqttConnectionStatus.CONNECTED, client.connectionStatus)
@@ -124,9 +122,7 @@ class ClientConnectionTest {
         client = MqttClient(connectionConfig, logger)
         client.addConnectionListener()
         client.connect()
-        verify(timeout = connectTimeout, ordering = Ordering.SEQUENCE) {
-            onConnection(MqttConnectionStatus.CONNECTING)
-            onConnection(MqttConnectionStatus.ESTABLISHING)
+        verify(timeout = connectTimeout) {
             onConnection(MqttConnectionStatus.ERROR)
         }
     }

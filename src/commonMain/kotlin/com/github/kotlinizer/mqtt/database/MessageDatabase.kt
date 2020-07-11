@@ -1,13 +1,13 @@
 package com.github.kotlinizer.mqtt.database
 
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import com.github.kotlinizer.mqtt.Logger
 import com.github.kotlinizer.mqtt.MqttPacket
 import com.github.kotlinizer.mqtt.MqttQos
 import com.github.kotlinizer.mqtt.internal.connection.packet.Publish
 import com.github.kotlinizer.mqtt.internal.connection.packet.sent.PubRel
 import com.github.kotlinizer.mqtt.internal.connection.packet.sent.Subscribe
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 @Suppress("UNCHECKED_CAST")
 abstract class MessageDatabase(
@@ -64,9 +64,10 @@ abstract class MessageDatabase(
         return pubRel
     }
 
-    private fun <T : MqttPacket> T.updateIdentifiablePacket(mqttPacket: Short): T {
+    private fun <T : MqttPacket> T.updateIdentifiablePacket(identifier: Short): T {
         return when (this) {
-            is Publish -> copy(packetIdentifier = mqttPacket)
+            is Publish -> copy(packetIdentifier = identifier)
+            is Subscribe -> copy(packetIdentifier = identifier)
             else -> {
                 logger?.e { "Unsupported class: $this" }
                 this
