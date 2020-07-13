@@ -3,9 +3,10 @@ package com.github.kotlinizer.mqtt
 import com.github.kotlinizer.mqtt.MqttQos.*
 
 
+@OptIn(ExperimentalStdlibApi::class)
 data class MqttMessage(
     val topic: String,
-    val message: List<Byte>,
+    val message: String,
     /**
      * Can be [AT_MOST_ONCE], [AT_LEAST_ONCE] or [EXACTLY_ONCE]
      */
@@ -13,7 +14,10 @@ data class MqttMessage(
     val retain: Boolean = false
 ) {
 
-    @ExperimentalStdlibApi
-    constructor(topic: String, message: String, qos: MqttQos = AT_MOST_ONCE, retain: Boolean = false)
-            : this(topic, message.encodeToByteArray().toList(), qos, retain)
+    constructor(topic: String, message: List<Byte>, qos: MqttQos = AT_MOST_ONCE, retain: Boolean = false)
+            : this(topic, message.toByteArray().decodeToString(), qos, retain)
+
+    internal val messageBytes by lazy {
+        message.encodeToByteArray().asList()
+    }
 }

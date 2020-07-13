@@ -16,7 +16,7 @@ internal class PackageReceiver(
     connectionFlow: Flow<MqttConnection?>,
     logger: Logger?,
     errorOccurred: suspend () -> Unit,
-    packetReceived: (MqttReceivedPacket) -> Unit
+    packetReceived: suspend (MqttReceivedPacket) -> Unit
 ) {
 
     init {

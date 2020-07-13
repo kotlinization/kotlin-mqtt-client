@@ -4,14 +4,11 @@ import com.github.kotlinizer.mppktx.coroutines.throwIfCanceled
 import com.github.kotlinizer.mqtt.MqttConnectionStatus.*
 import com.github.kotlinizer.mqtt.database.MemoryMessageDatabase
 import com.github.kotlinizer.mqtt.database.MessageDatabase
-import com.github.kotlinizer.mqtt.internal.PackageReceiver
-import com.github.kotlinizer.mqtt.internal.PingRequestTracker
+import com.github.kotlinizer.mqtt.internal.*
 import com.github.kotlinizer.mqtt.internal.connection.MqttConnection
 import com.github.kotlinizer.mqtt.internal.connection.packet.Publish
 import com.github.kotlinizer.mqtt.internal.connection.packet.received.*
 import com.github.kotlinizer.mqtt.internal.connection.packet.sent.*
-import com.github.kotlinizer.mqtt.internal.createConnection
-import com.github.kotlinizer.mqtt.internal.mqttDispatcher
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,13 +27,25 @@ class MqttClient(
     val connectionStatusStateFlow: StateFlow<MqttConnectionStatus>
         get() = mutableConnectionStatusFlow
 
-    private val mutableConnectionStatusFlow = MutableStateFlow(DISCONNECTED)
+    private val mutableConnectionStatusFlow by lazy {
+        MutableStateFlow(DISCONNECTED)
+    }
 
-    private val connectionMutableStateFlow = MutableStateFlow<MqttConnection?>(null)
+    private val connectionMutableStateFlow by lazy {
+        MutableStateFlow<MqttConnection?>(null)
+    }
 
-    private val connectionMutex = Mutex()
+    private val connectionMutex by lazy {
+        Mutex()
+    }
 
-    private val localScope = CoroutineScope(mqttDispatcher + SupervisorJob())
+    private val localScope by lazy {
+        CoroutineScope(mqttDispatcher + SupervisorJob())
+    }
+
+    private val subscriptionTracker by lazy {
+        SubscriptionTracker()
+    }
 
     init {
         PackageReceiver(
@@ -105,14 +114,15 @@ class MqttClient(
     }
 
     fun publishMessage(message: MqttMessage) {
-        localScope.launch {
-            publishPacket(Publish(message, 0))
+        localScope.launch(mqttDispatcher) {
+            publishPacket(Publish(0, message))
         }
     }
 
-    fun subscribe(topic: String) {
-        localScope.launch {
+    fun subscribe(topic: String, listener: MqttMessageListener) {
+        localScope.launch(mqttDispatcher) {
             publishPacket(Subscribe(0, mapOf(topic to MqttQos.AT_LEAST_ONCE)))
+            subscriptionTracker.addListener(topic, listener)
         }
     }
 
@@ -121,7 +131,9 @@ class MqttClient(
             writePacket(packet)
         } catch (t: Throwable) {
             t.throwIfCanceled()
-            logger?.e(t) { "Unable to publish packet: $packet." }
+            logger?.e(t) {
+                "Unable to publish packet: $packet."
+            }
             errorOccurred()
         }
     }
@@ -133,17 +145,16 @@ class MqttClient(
         }
     }
 
-    private fun packetReceived(mqttReceivedPacket: MqttReceivedPacket) {
+    private suspend fun packetReceived(mqttReceivedPacket: MqttReceivedPacket) {
         when (mqttReceivedPacket) {
             is ConnAck -> connAckReceived(mqttReceivedPacket)
             is PubAck, is PubComp -> packetCompleted(mqttReceivedPacket)
             is PubRec -> pubRecReceived(mqttReceivedPacket)
             is SubAck -> {
+
             }
-            is Publish ->{
-                logger?.t {
-                    mqttReceivedPacket.mqttMessage.message.toTypedArray().contentDeepToString()
-                }
+            is Publish -> {
+                subscriptionTracker.publishReceived(mqttReceivedPacket)
             }
             else -> logger?.e { "Invalid packet received: $mqttReceivedPacket" }
         }

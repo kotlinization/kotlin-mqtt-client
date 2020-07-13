@@ -4,6 +4,7 @@ import com.github.kotlinizer.mqtt.MQTTException
 import com.github.kotlinizer.mqtt.internal.connection.packet.Publish
 import com.github.kotlinizer.mqtt.internal.connection.packet.received.*
 import com.github.kotlinizer.mqtt.types
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlin.experimental.and
 import kotlin.experimental.or
@@ -60,9 +61,11 @@ private const val MASK = 128.toByte()
 
 private const val STOP = 0.toByte()
 
+@OptIn(ExperimentalStdlibApi::class)
 internal suspend fun ReceiveChannel<Byte>.getPacket(): MqttReceivedPacket {
-    val type = receive().toInt().and(0x000000FF).shr(4)
-    val size = toDecodedInt()
+    val header = receive()
+    val type = header.toInt().and(0x000000FF).shr(4)
+    val size = receiveDecodedInt()
     val bytes = if (size < 1) emptyList() else (0 until size).map {
         receive()
     }
@@ -74,12 +77,14 @@ internal suspend fun ReceiveChannel<Byte>.getPacket(): MqttReceivedPacket {
         PubRec::class -> PubRec(bytes.toShort())
         PubComp::class -> PubComp(bytes.toShort())
         SubAck::class -> SubAck(bytes)
-        Publish::class -> Publish(bytes)
+        Publish::class -> {
+            Publish.receivePacket(header, bytes)
+        }
         else -> throw IllegalArgumentException("Unknown class: $kClass")
     }
 }
 
-internal suspend fun ReceiveChannel<Byte>.toDecodedInt(): Int {
+internal suspend fun ReceiveChannel<Byte>.receiveDecodedInt(): Int {
     var multiplier = 1
     var value = 0
     do {
@@ -91,4 +96,22 @@ internal suspend fun ReceiveChannel<Byte>.toDecodedInt(): Int {
         }
     } while ((encodedByte and MASK) != STOP)
     return value
+}
+
+@OptIn(ExperimentalStdlibApi::class)
+internal suspend fun ReceiveChannel<Byte>.receiveString(): String {
+    val lengthBytes = listOf(receive(), receive())
+    val length = lengthBytes.toShort()
+    return ByteArray(length.toInt()) {
+        receive()
+    }.decodeToString()
+}
+
+internal fun List<Byte>.toReceiveChannel(): ReceiveChannel<Byte> {
+    return Channel<Byte>(size).apply {
+        forEach {
+            offer(it)
+        }
+        close()
+    }
 }

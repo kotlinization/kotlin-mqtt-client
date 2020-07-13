@@ -3,6 +3,7 @@ package com.github.kotlinizer.mqtt.client
 import com.github.kotlinizer.mqtt.*
 import io.mockk.MockKAnnotations
 import io.mockk.impl.annotations.SpyK
+import io.mockk.verify
 import kotlinx.coroutines.delay
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -12,6 +13,11 @@ class ClientSubscribeTest {
 
     @SpyK
     private var logger: Logger = TestLogger()
+
+    @SpyK
+    private var listener: MqttMessageListener = {
+        println("New message: $it")
+    }
 
     private lateinit var connectionConfig: MqttConnectionConfig
 
@@ -32,10 +38,28 @@ class ClientSubscribeTest {
     fun subscribeQoS0() = withBroker {
         client = MqttClient(connectionConfig, logger)
         client.connect(10_000)
-        client.subscribe("test")
+        client.subscribe("test", listener)
         delay(1_000)
-        client.publishMessage(MqttMessage("test", "Hello"))
+        val message = MqttMessage("test", "Hello")
+        client.publishMessage(message)
+        verify(timeout = 1_000) {
+            listener(message)
+        }
+        client.disconnect()
+    }
+
+    @Test
+    @ExperimentalStdlibApi
+    fun subscribeQoS0Retain() = withBroker {
+        client = MqttClient(connectionConfig, logger)
+        client.connect(10_000)
+        client.subscribe("test", listener)
         delay(1_000)
+        val message = MqttMessage("test", "Hello", retain = true)
+        client.publishMessage(message)
+        verify(timeout = 1_000) {
+            listener(message)
+        }
         client.disconnect()
     }
 }

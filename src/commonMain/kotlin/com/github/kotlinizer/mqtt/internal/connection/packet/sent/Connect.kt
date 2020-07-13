@@ -42,7 +42,7 @@ internal data class Connect(private val connectionConfig: MqttConnectionConfig) 
             addStringWithLength(connectionConfig.clientId)
             connectionConfig.willMessage?.let {
                 addStringWithLength(it.topic)
-                addByteList(it.message)
+                addByteList(it.messageBytes)
             }
             connectionConfig.username?.let { addStringWithLength(it) }
             connectionConfig.password?.let { addStringWithLength(it) }

@@ -1,7 +1,7 @@
 package com.github.kotlinizer.mqtt
 
 import com.github.kotlinizer.mqtt.internal.util.toByteList
-import com.github.kotlinizer.mqtt.internal.util.toDecodedInt
+import com.github.kotlinizer.mqtt.internal.util.receiveDecodedInt
 import com.github.kotlinizer.mqtt.internal.util.toEncodedBytes
 import com.github.kotlinizer.mqtt.internal.util.toShort
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -56,7 +56,7 @@ class ExtensionKtTest {
             repeat(100_000) { number ->
                 val bytes = number.toEncodedBytes()
                 val stream = flowOf(*bytes.toTypedArray()).broadcastIn(this).openSubscription()
-                val decoded = stream.toDecodedInt()
+                val decoded = stream.receiveDecodedInt()
                 assertEquals(number, decoded)
             }
         }
