@@ -1,5 +1,7 @@
 package com.github.kotlinizer.mqtt
 
+import com.github.kotlinizer.mqtt.client.MqttClient
+
 
 @ExperimentalStdlibApi
 suspend fun main() {

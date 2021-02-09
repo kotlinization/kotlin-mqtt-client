@@ -1,11 +1,12 @@
 plugins {
-    kotlin("multiplatform") version "1.3.72"
+    kotlin("multiplatform") version "1.4.30"
 }
 
-val coroutinesVersion = "1.3.7"
+val coroutinesVersion = "1.4.2"
 
 repositories {
     mavenCentral()
+    maven { setUrl("https://jitpack.io") }
 }
 
 kotlin {
@@ -13,9 +14,8 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation(kotlin("stdlib-common"))
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-common:$coroutinesVersion")
-                implementation("com.github.kotlinizer.mpp-ktx:mpp-ktx:v0.1.1")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
+                implementation("com.github.kotlinizer.mpp-ktx:mpp-ktx:v0.1.3")
             }
         }
         val commonTest by getting {
@@ -25,12 +25,7 @@ kotlin {
                 implementation("io.mockk:mockk:1.10.0")
             }
         }
-        val jvmMain by getting {
-            dependencies {
-                implementation(kotlin("stdlib-jdk8"))
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
-            }
-        }
+        val jvmMain by getting { }
         val jvmTest by getting {
             dependencies {
                 implementation(kotlin("test-junit"))

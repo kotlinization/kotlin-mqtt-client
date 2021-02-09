@@ -20,12 +20,11 @@ internal data class Publish(
 
     companion object {
 
-        @OptIn(ExperimentalStdlibApi::class)
-        fun receivePacket(header: Byte, bytes: List<Byte>): Publish {
-            val topicLength = bytes.subList(0, 2).toShort()
-            val topic = bytes.subList(2, 2 + topicLength).toByteArray().decodeToString()
-            val identifier = bytes.subList(2 + topicLength, 4 + topicLength).toShort()
-            val message = bytes.subList(4 + topicLength, bytes.size).toByteArray().decodeToString()
+        fun List<Byte>.receivePublish(header: Byte): Publish {
+            val topicLength = subList(0, 2).toShort()
+            val topic = subList(2, 2 + topicLength).toByteArray().decodeToString()
+            val identifier = subList(2 + topicLength, 4 + topicLength).toShort()
+            val message = subList(4 + topicLength, size).toByteArray().decodeToString()
             val retain = header.and(0b0000_0001) == 1.toByte()
             return Publish(identifier, MqttMessage(topic, message, retain = retain))
         }
@@ -42,17 +41,21 @@ internal data class Publish(
         }
     }
 
-    @OptIn(ExperimentalStdlibApi::class)
     override val payload: List<Byte> by lazy {
         mqttMessage.messageBytes
     }
 
     override fun isResponse(receivedPacket: MqttReceivedPacket): Boolean {
-        if (mqttMessage.qos == MqttQos.AT_LEAST_ONCE && (receivedPacket as? PubAck)?.packetIdentifier == packetIdentifier) {
-            return true
-        } else if (mqttMessage.qos == MqttQos.EXACTLY_ONCE && (receivedPacket as? PubRec)?.packetIdentifier == packetIdentifier) {
-            return true
+        return when {
+            mqttMessage.qos == MqttQos.AT_LEAST_ONCE &&
+                    (receivedPacket as? PubAck)?.packetIdentifier == packetIdentifier -> {
+                true
+            }
+            mqttMessage.qos == MqttQos.EXACTLY_ONCE &&
+                    (receivedPacket as? PubRec)?.packetIdentifier == packetIdentifier -> {
+                true
+            }
+            else -> false
         }
-        return false
     }
 }

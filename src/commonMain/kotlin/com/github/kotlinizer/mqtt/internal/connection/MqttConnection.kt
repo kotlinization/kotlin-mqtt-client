@@ -8,9 +8,8 @@ import com.github.kotlinizer.mqtt.internal.connection.packet.sent.MqttSentPacket
 import com.github.kotlinizer.mqtt.internal.connection.packet.sent.PingReq
 import com.github.kotlinizer.mqtt.internal.util.getPacket
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.ConflatedBroadcastChannel
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.isActive
@@ -24,7 +23,7 @@ internal abstract class MqttConnection(
 ) {
 
     val packetTransitFlow: Flow<Unit>
-        get() = packetTransitChannel.asFlow()
+        get() = packetTransitSharedFlow
 
     val packetFlow: Flow<MqttReceivedPacket> = channelFlow {
         val channel = Channel<Byte>(Channel.RENDEZVOUS)
@@ -36,14 +35,10 @@ internal abstract class MqttConnection(
         launch {
             while (isActive) {
                 val packet = channel.getPacket().also {
-                    packetTransitChannel.send(Unit)
+                    packetTransitSharedFlow.emit(Unit)
                 }
-                logger?.t {
-                    "Packet received: $packet."
-                }
-                if (packet !is PingResp) {
-                    send(packet)
-                }
+                logger?.t { "Packet received: $packet." }
+                if (packet !is PingResp) send(packet)
             }
         }
     }
@@ -52,7 +47,7 @@ internal abstract class MqttConnection(
 
     private val sendMutex = Mutex()
 
-    private val packetTransitChannel = ConflatedBroadcastChannel<Unit>()
+    private val packetTransitSharedFlow = MutableSharedFlow<Unit>()
 
     abstract suspend fun connect()
 
@@ -67,7 +62,7 @@ internal abstract class MqttConnection(
         }
         logger?.t { "Packet written: $packet." }
         if (packet !is PingReq) {
-            packetTransitChannel.send(Unit)
+            packetTransitSharedFlow.emit(Unit)
         }
     }
 

@@ -1,6 +1,7 @@
-package com.github.kotlinizer.mqtt
+package com.github.kotlinizer.mqtt.client
 
 import com.github.kotlinizer.mppktx.coroutines.throwIfCanceled
+import com.github.kotlinizer.mqtt.*
 import com.github.kotlinizer.mqtt.MqttConnectionStatus.*
 import com.github.kotlinizer.mqtt.database.MemoryMessageDatabase
 import com.github.kotlinizer.mqtt.database.MessageDatabase
@@ -10,24 +11,31 @@ import com.github.kotlinizer.mqtt.internal.connection.packet.Publish
 import com.github.kotlinizer.mqtt.internal.connection.packet.received.*
 import com.github.kotlinizer.mqtt.internal.connection.packet.sent.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-class MqttClient(
+fun MqttClient(
+    connectionConfig: MqttConnectionConfig,
+    logger: Logger?,
+    messageDatabase: MessageDatabase = MemoryMessageDatabase(logger)
+): MqttClient {
+    return MqttClientImpl(connectionConfig, logger, messageDatabase)
+}
+
+private class MqttClientImpl(
     val connectionConfig: MqttConnectionConfig,
     private val logger: Logger?,
     private val messageDatabase: MessageDatabase = MemoryMessageDatabase(logger)
-) {
+) : MqttClient {
 
-    val connectionStatus: MqttConnectionStatus
+    var connectionStatus: MqttConnectionStatus
         get() = connectionStatusStateFlow.value
+        private set(value) {
+            connectionStatusStateFlow.value = value
+        }
 
-    val connectionStatusStateFlow: StateFlow<MqttConnectionStatus>
-        get() = mutableConnectionStatusFlow
-
-    private val mutableConnectionStatusFlow by lazy {
+    override val connectionStatusStateFlow by lazy {
         MutableStateFlow(DISCONNECTED)
     }
 
@@ -66,64 +74,47 @@ class MqttClient(
         }
     }
 
-    fun connect() {
-        localScope.launch(mqttDispatcher) {
-            try {
-                connectionMutex.withLock {
-                    if (connectionStatus != DISCONNECTED && connectionStatus != ERROR) return@withLock
-                    mutableConnectionStatusFlow.value = CONNECTING
-                    connectionMutableStateFlow.value = createConnection(connectionConfig, logger).also { connection ->
-                        connection.connect()
-                    }
-                    mutableConnectionStatusFlow.value = ESTABLISHING
-                    writePacket(Connect(connectionConfig))
+    override suspend fun connect() {
+        try {
+            connectionMutex.withLock {
+                if (connectionStatus != DISCONNECTED && connectionStatus != ERROR) return@withLock
+                connectionStatus = CONNECTING
+                connectionMutableStateFlow.value = createConnection(connectionConfig, logger).also { connection ->
+                    connection.connect()
                 }
-            } catch (t: Throwable) {
-                logger?.e(t) { "Unable to connect." }
-                errorOccurred()
+                connectionStatus = ESTABLISHING
+                writePacket(Connect(connectionConfig))
             }
+        } catch (t: Throwable) {
+            logger?.e(t) { "Unable to connect." }
+            errorOccurred()
         }
     }
 
-    suspend fun connect(timeout: Long) {
-        withTimeout(timeout) {
-            while (connectionStatus != CONNECTED) {
-                connect()
-                while (connectionStatus == CONNECTING || connectionStatus == ESTABLISHING) {
-                    delay(100)
-                }
-            }
-        }
-    }
-
-    suspend fun disconnect() {
+    override suspend fun disconnect() {
         try {
             connectionMutex.withLock {
                 if (connectionStatus == CONNECTED) {
-                    mutableConnectionStatusFlow.value = DISCONNECTING
+                    connectionStatus = DISCONNECTING
                     writePacket(Disconnect())
                     connectionMutableStateFlow.value?.disconnectAndClear()
                     connectionMutableStateFlow.value = null
-                    mutableConnectionStatusFlow.value = DISCONNECTED
+                    connectionStatus = DISCONNECTED
                 }
             }
         } catch (t: Throwable) {
             logger?.e(t) { "Error while disconnecting." }
-            mutableConnectionStatusFlow.value = ERROR
+            connectionStatus = ERROR
         }
     }
 
-    fun publishMessage(message: MqttMessage) {
-        localScope.launch(mqttDispatcher) {
-            publishPacket(Publish(0, message))
-        }
+    override suspend fun publishMessage(message: MqttMessage) {
+        publishPacket(Publish(0, message))
     }
 
-    fun subscribe(topic: String, listener: MqttMessageListener) {
-        localScope.launch(mqttDispatcher) {
-            publishPacket(Subscribe(0, mapOf(topic to MqttQos.AT_LEAST_ONCE)))
-            subscriptionTracker.addListener(topic, listener)
-        }
+    override suspend fun subscribe(topic: String, listener: MqttMessageListener) {
+        publishPacket(Subscribe(0, mapOf(topic to MqttQos.AT_LEAST_ONCE)))
+        subscriptionTracker.addListener(topic, listener)
     }
 
     private suspend fun publishPacket(packet: MqttSentPacket) {
@@ -163,7 +154,7 @@ class MqttClient(
     private fun connAckReceived(connAck: ConnAck) {
         localScope.launch {
             connectionMutex.withLock {
-                mutableConnectionStatusFlow.value = if (connectionStatus == ESTABLISHING) {
+                connectionStatus = if (connectionStatus == ESTABLISHING) {
                     if (connAck.error == null) {
                         logger?.t {
                             "Connection established, now active."
@@ -201,7 +192,7 @@ class MqttClient(
         connectionMutex.withLock {
             connectionMutableStateFlow.value?.disconnectAndClear()
             connectionMutableStateFlow.value = null
-            mutableConnectionStatusFlow.value = ERROR
+            connectionStatus = ERROR
         }
     }
 }

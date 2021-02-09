@@ -2,7 +2,10 @@ package com.github.kotlinizer.mqtt.internal.util
 
 import com.github.kotlinizer.mqtt.MQTTException
 import com.github.kotlinizer.mqtt.internal.connection.packet.Publish
+import com.github.kotlinizer.mqtt.internal.connection.packet.Publish.Companion.receivePublish
 import com.github.kotlinizer.mqtt.internal.connection.packet.received.*
+import com.github.kotlinizer.mqtt.io.Input
+import com.github.kotlinizer.mqtt.io.toInput
 import com.github.kotlinizer.mqtt.types
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
@@ -18,7 +21,6 @@ internal fun MutableList<Byte>.addByteList(list: List<Byte>) {
     addAll(list)
 }
 
-@OptIn(ExperimentalStdlibApi::class)
 internal fun MutableList<Byte>.addStringWithLength(string: String) {
     val bytes = string.encodeToByteArray().toTypedArray()
     addAll(bytes.size.toShort().toByteList())
@@ -42,10 +44,6 @@ internal infix fun Byte.shl(count: Int): Byte {
     return toInt().shl(count).toByte()
 }
 
-internal infix fun Byte.shr(count: Int): Byte {
-    return toInt().shr(count).toByte()
-}
-
 internal fun Int.toEncodedBytes(): List<Byte> {
     val bytes = mutableListOf<Byte>()
     var x = this
@@ -61,11 +59,10 @@ private const val MASK = 128.toByte()
 
 private const val STOP = 0.toByte()
 
-@OptIn(ExperimentalStdlibApi::class)
 internal suspend fun ReceiveChannel<Byte>.getPacket(): MqttReceivedPacket {
     val header = receive()
     val type = header.toInt().and(0x000000FF).shr(4)
-    val size = receiveDecodedInt()
+    val size = toInput().receiveDecodedInt()
     val bytes = if (size < 1) emptyList() else (0 until size).map {
         receive()
     }
@@ -77,18 +74,16 @@ internal suspend fun ReceiveChannel<Byte>.getPacket(): MqttReceivedPacket {
         PubRec::class -> PubRec(bytes.toShort())
         PubComp::class -> PubComp(bytes.toShort())
         SubAck::class -> SubAck(bytes)
-        Publish::class -> {
-            Publish.receivePacket(header, bytes)
-        }
+        Publish::class -> bytes.receivePublish(header)
         else -> throw IllegalArgumentException("Unknown class: $kClass")
     }
 }
 
-internal suspend fun ReceiveChannel<Byte>.receiveDecodedInt(): Int {
+internal suspend fun Input.receiveDecodedInt(): Int {
     var multiplier = 1
     var value = 0
     do {
-        val encodedByte = receive()
+        val encodedByte = read()
         value += (encodedByte and 127) * multiplier
         multiplier *= 128
         if (multiplier > 128 * 128 * 128) {
@@ -96,22 +91,4 @@ internal suspend fun ReceiveChannel<Byte>.receiveDecodedInt(): Int {
         }
     } while ((encodedByte and MASK) != STOP)
     return value
-}
-
-@OptIn(ExperimentalStdlibApi::class)
-internal suspend fun ReceiveChannel<Byte>.receiveString(): String {
-    val lengthBytes = listOf(receive(), receive())
-    val length = lengthBytes.toShort()
-    return ByteArray(length.toInt()) {
-        receive()
-    }.decodeToString()
-}
-
-internal fun List<Byte>.toReceiveChannel(): ReceiveChannel<Byte> {
-    return Channel<Byte>(size).apply {
-        forEach {
-            offer(it)
-        }
-        close()
-    }
 }

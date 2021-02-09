@@ -28,7 +28,6 @@ class ClientPublishingTest {
     }
 
     @Test
-    @ExperimentalStdlibApi
     fun publishQoS0() = withBroker {
         client = MqttClient(connectionConfig, logger)
         client.connect(10_000)
@@ -37,7 +36,6 @@ class ClientPublishingTest {
     }
 
     @Test
-    @ExperimentalStdlibApi
     fun publishMultipleQoS0() = withBroker {
         client = MqttClient(connectionConfig, logger)
         client.connect(10_000)
@@ -49,7 +47,6 @@ class ClientPublishingTest {
     }
 
     @Test
-    @ExperimentalStdlibApi
     fun publishQoS1() = withBroker {
         client = MqttClient(connectionConfig, logger)
         client.connect(10_000)
@@ -59,7 +56,6 @@ class ClientPublishingTest {
     }
 
     @Test
-    @ExperimentalStdlibApi
     fun publishMultipleQoS1() = withBroker {
         client = MqttClient(connectionConfig, logger)
         client.connect(10_000)
@@ -80,7 +76,6 @@ class ClientPublishingTest {
     }
 
     @Test
-    @ExperimentalStdlibApi
     fun publishQoS2() = withBroker {
         client = MqttClient(connectionConfig, logger)
         client.connect(10_000)

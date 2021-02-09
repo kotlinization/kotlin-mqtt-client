@@ -53,13 +53,19 @@ class ClientSubscribeTest {
     fun subscribeQoS0Retain() = withBroker {
         client = MqttClient(connectionConfig, logger)
         client.connect(10_000)
-        client.subscribe("test", listener)
-        delay(1_000)
         val message = MqttMessage("test", "Hello", retain = true)
         client.publishMessage(message)
-        verify(timeout = 1_000) {
+        delay(2_000)
+
+        val client2 = MqttClient(connectionConfig, logger)
+        client2.connect(10_000)
+        client2.subscribe("test", listener)
+
+        verify(timeout = 10_000) {
             listener(message)
         }
+
         client.disconnect()
+        client2.disconnect()
     }
 }

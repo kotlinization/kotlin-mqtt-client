@@ -4,7 +4,10 @@ import com.github.kotlinizer.mqtt.internal.util.toByteList
 import com.github.kotlinizer.mqtt.internal.util.receiveDecodedInt
 import com.github.kotlinizer.mqtt.internal.util.toEncodedBytes
 import com.github.kotlinizer.mqtt.internal.util.toShort
+import com.github.kotlinizer.mqtt.io.toInput
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ConflatedBroadcastChannel
 import kotlinx.coroutines.flow.broadcastIn
 import kotlinx.coroutines.flow.flowOf
 import kotlin.test.Test
@@ -50,13 +53,12 @@ class ExtensionKtTest {
     }
 
     @Test
-    @ExperimentalCoroutinesApi
     fun encodeDecode() {
         blockThread {
-            repeat(100_000) { number ->
+            repeat(10_000) { number ->
                 val bytes = number.toEncodedBytes()
-                val stream = flowOf(*bytes.toTypedArray()).broadcastIn(this).openSubscription()
-                val decoded = stream.receiveDecodedInt()
+//                val stream = flowOf(*bytes.toTypedArray())//.broadcastIn(this).openSubscription()
+                val decoded = bytes.toInput().receiveDecodedInt()
                 assertEquals(number, decoded)
             }
         }

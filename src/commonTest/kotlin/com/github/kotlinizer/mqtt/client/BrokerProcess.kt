@@ -1,5 +1,8 @@
-package com.github.kotlinizer.mqtt
+package com.github.kotlinizer.mqtt.client
 
+import com.github.kotlinizer.mqtt.Process
+import com.github.kotlinizer.mqtt.TmpFile
+import com.github.kotlinizer.mqtt.blockThread
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 
@@ -15,12 +18,15 @@ fun withBroker(username: Boolean = false, port: Int = 1883, block: suspend Corou
         passwordFile = TmpFile()
         userPwConfig = "allow_anonymous false\n password_file ${passwordFile.path}"
     } else {
-        userPwConfig = ""
+        userPwConfig = "allow_anonymous true"
     }
     try {
         passwordFile?.write(userPassword)
         file.write(
-            "port $port\n $userPwConfig"
+            """
+                port $port
+                $userPwConfig
+            """.trimIndent()
         )
         process.start()
         blockThread {

@@ -2,8 +2,6 @@ package com.github.kotlinizer.mqtt
 
 import com.github.kotlinizer.mqtt.MqttQos.*
 
-
-@OptIn(ExperimentalStdlibApi::class)
 data class MqttMessage(
     val topic: String,
     val message: String,

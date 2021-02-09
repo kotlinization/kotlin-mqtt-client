@@ -67,6 +67,7 @@ internal class TcpMqttConnection(
     override suspend fun writeBytes(bytes: List<Byte>) {
         withContext(IO) {
             outputStream.write(bytes.toByteArray())
+            outputStream.flush()
         }
     }
 }
