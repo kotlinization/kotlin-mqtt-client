@@ -59,12 +59,13 @@ private const val MASK = 128.toByte()
 
 private const val STOP = 0.toByte()
 
-internal suspend fun ReceiveChannel<Byte>.getPacket(): MqttReceivedPacket {
-    val header = receive()
+internal suspend fun Input.getPacket(): MqttReceivedPacket {
+    val header = read()
     val type = header.toInt().and(0x000000FF).shr(4)
-    val size = toInput().receiveDecodedInt()
-    val bytes = if (size < 1) emptyList() else (0 until size).map {
-        receive()
+    val size = receiveDecodedInt()
+    val bytes = when {
+        size < 1 -> emptyList()
+        else -> (0 until size).map { read() }
     }
     val kClass = types[type] ?: throw MQTTException("Unknown type $type.")
     return when (kClass) {

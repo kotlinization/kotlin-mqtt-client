@@ -1,6 +1,5 @@
 package com.github.kotlinizer.mqtt.client
 
-import com.github.kotlinizer.mppktx.coroutines.throwIfCanceled
 import com.github.kotlinizer.mqtt.*
 import com.github.kotlinizer.mqtt.MqttConnectionStatus.*
 import com.github.kotlinizer.mqtt.database.MemoryMessageDatabase
@@ -10,6 +9,7 @@ import com.github.kotlinizer.mqtt.internal.connection.MqttConnection
 import com.github.kotlinizer.mqtt.internal.connection.packet.Publish
 import com.github.kotlinizer.mqtt.internal.connection.packet.received.*
 import com.github.kotlinizer.mqtt.internal.connection.packet.sent.*
+import com.github.kotlinizer.mqtt.internal.util.createPacketFlow
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
@@ -29,10 +29,20 @@ private class MqttClientImpl(
     private val messageDatabase: MessageDatabase = MemoryMessageDatabase(logger)
 ) : MqttClient {
 
+    private var receivingJob: Job? = null
+
     var connectionStatus: MqttConnectionStatus
         get() = connectionStatusStateFlow.value
         private set(value) {
+            if (connectionStatus == value) return
             connectionStatusStateFlow.value = value
+            if (value == CONNECTED) {
+                receivingJob = localScope.launch(Dispatchers.MqttDispatcher) {
+                    packetSharedFlow.collect(::packetReceived)
+                }
+            } else {
+                receivingJob?.cancel()
+            }
         }
 
     override val connectionStatusStateFlow by lazy {
@@ -48,21 +58,14 @@ private class MqttClientImpl(
     }
 
     private val localScope by lazy {
-        CoroutineScope(mqttDispatcher + SupervisorJob())
+        CoroutineScope(Dispatchers.MqttDispatcher + SupervisorJob())
     }
 
-    private val subscriptionTracker by lazy {
-        SubscriptionTracker()
+    private val packetSharedFlow by lazy {
+        connectionMutableStateFlow.createPacketFlow(localScope)
     }
 
     init {
-        PackageReceiver(
-            localScope,
-            connectionMutableStateFlow,
-            logger,
-            this::errorOccurred,
-            this::packetReceived
-        )
         PingRequestTracker(
             localScope,
             connectionConfig,
@@ -78,15 +81,27 @@ private class MqttClientImpl(
         try {
             connectionMutex.withLock {
                 if (connectionStatus != DISCONNECTED && connectionStatus != ERROR) return@withLock
+
                 connectionStatus = CONNECTING
-                connectionMutableStateFlow.value = createConnection(connectionConfig, logger).also { connection ->
-                    connection.connect()
-                }
+                connectionMutableStateFlow.value = createConnection(connectionConfig, logger)
+                    .also { connection -> connection.connect() }
+
                 connectionStatus = ESTABLISHING
                 writePacket(Connect(connectionConfig))
+                val connAck = packetSharedFlow
+                    .filterIsInstance<ConnAck>()
+                    .first()
+
+                connectionStatus = if (connAck.error == null) {
+                    logger?.t { "Connection established, now active." }
+                    CONNECTED
+                } else {
+                    logger?.e(connAck.error) { "Error ConnAck received." }
+                    ERROR
+                }
             }
-        } catch (t: Throwable) {
-            logger?.e(t) { "Unable to connect." }
+        } catch (e: Exception) {
+            logger?.e(e) { "Unable to connect." }
             errorOccurred()
         }
     }
@@ -112,66 +127,49 @@ private class MqttClientImpl(
         publishPacket(Publish(0, message))
     }
 
-    override suspend fun subscribe(topic: String, listener: MqttMessageListener) {
+    override suspend fun subscribe(topic: String, qos: MqttQos): Flow<MqttMessage> {
         publishPacket(Subscribe(0, mapOf(topic to MqttQos.AT_LEAST_ONCE)))
-        subscriptionTracker.addListener(topic, listener)
+        return channelFlow {
+            launch(Dispatchers.MqttDispatcher) {
+                packetSharedFlow.filterIsInstance<Publish>()
+                    .filter {
+                        // TODO Add topic matcher
+                        it.mqttMessage.topic == topic
+                    }.collect {
+                        send(it.mqttMessage)
+                    }
+            }
+        }
     }
 
     private suspend fun publishPacket(packet: MqttSentPacket) {
         try {
             writePacket(packet)
         } catch (t: Throwable) {
-            t.throwIfCanceled()
-            logger?.e(t) {
-                "Unable to publish packet: $packet."
-            }
+            logger?.e(t) { "Unable to publish packet: $packet." }
             errorOccurred()
         }
     }
 
     private suspend fun writePacket(mqttPacket: MqttSentPacket) {
-        withContext(NonCancellable) {
-            val savedPacket = messageDatabase.savePacket(mqttPacket)
-            connectionMutableStateFlow.value?.writePacket(savedPacket)
-        }
+        val savedPacket = messageDatabase.savePacket(mqttPacket)
+        connectionMutableStateFlow.value?.writePacket(savedPacket)
     }
 
-    private suspend fun packetReceived(mqttReceivedPacket: MqttReceivedPacket) {
+    private fun packetReceived(mqttReceivedPacket: MqttReceivedPacket) {
         when (mqttReceivedPacket) {
-            is ConnAck -> connAckReceived(mqttReceivedPacket)
+            is ConnAck -> connAckReceived()
             is PubAck, is PubComp -> packetCompleted(mqttReceivedPacket)
             is PubRec -> pubRecReceived(mqttReceivedPacket)
-            is SubAck -> {
-
-            }
-            is Publish -> {
-                subscriptionTracker.publishReceived(mqttReceivedPacket)
-            }
             else -> logger?.e { "Invalid packet received: $mqttReceivedPacket" }
         }
     }
 
-    private fun connAckReceived(connAck: ConnAck) {
+    private fun connAckReceived() {
         localScope.launch {
             connectionMutex.withLock {
-                connectionStatus = if (connectionStatus == ESTABLISHING) {
-                    if (connAck.error == null) {
-                        logger?.t {
-                            "Connection established, now active."
-                        }
-                        CONNECTED
-                    } else {
-                        logger?.e(connAck.error) {
-                            "Error ConnAck received."
-                        }
-                        ERROR
-                    }
-                } else {
-                    logger?.e {
-                        "Invalid state: Received ConnAck while not in establishing connection."
-                    }
-                    ERROR
-                }
+                logger?.e { "Invalid state: Received ConnAck while not in establishing connection." }
+                connectionStatus = ERROR
             }
         }
     }

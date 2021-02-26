@@ -7,6 +7,7 @@ import com.github.kotlinizer.mqtt.internal.connection.packet.received.PingResp
 import com.github.kotlinizer.mqtt.internal.connection.packet.sent.MqttSentPacket
 import com.github.kotlinizer.mqtt.internal.connection.packet.sent.PingReq
 import com.github.kotlinizer.mqtt.internal.util.getPacket
+import com.github.kotlinizer.mqtt.io.toInput
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -33,9 +34,16 @@ internal abstract class MqttConnection(
             }
         }
         launch {
+            val input = channel.toInput()
             while (isActive) {
-                val packet = channel.getPacket().also {
-                    packetTransitSharedFlow.emit(Unit)
+                val packet = try {
+                    input.getPacket().also {
+                        packetTransitSharedFlow.emit(Unit)
+                    }
+                } catch (e: Exception) {
+                    logger?.e(e) { "Error while receiving packet." }
+                    disconnectAndClear()
+                    return@launch
                 }
                 logger?.t { "Packet received: $packet." }
                 if (packet !is PingResp) send(packet)

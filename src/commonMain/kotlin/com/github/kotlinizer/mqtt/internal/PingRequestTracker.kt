@@ -4,6 +4,7 @@ import com.github.kotlinizer.mqtt.MqttConnectionConfig
 import com.github.kotlinizer.mqtt.MqttConnectionStatus
 import com.github.kotlinizer.mqtt.internal.connection.MqttConnection
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
@@ -21,7 +22,7 @@ internal class PingRequestTracker(
 ) {
 
     init {
-        localScope.launch(mqttDispatcher) {
+        localScope.launch(Dispatchers.MqttDispatcher) {
             connectionFlow
                 .filterNotNull()
                 .combine(connectionStatusFlow) { connection, status ->

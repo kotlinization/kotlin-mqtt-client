@@ -1,16 +1,18 @@
 package com.github.kotlinizer.mqtt
 
-class TestLogger : Logger(Level.TRACE) {
+class TestLogger(
+    private val prefix: String = ""
+) : Logger(Level.TRACE) {
 
     override fun logError(message: String, throwable: Throwable?) {
-        println("$milliseconds [E] $message Throwable: $throwable")
+        println("$milliseconds [E] $prefix $message Throwable: $throwable")
     }
 
     override fun logDebug(message: String) {
-        println("$milliseconds [D] $message")
+        println("$milliseconds [D] $prefix $message")
     }
 
     override fun logTrace(message: String) {
-        println("$milliseconds [T] $message")
+        println("$milliseconds [T] $prefix $message")
     }
 }

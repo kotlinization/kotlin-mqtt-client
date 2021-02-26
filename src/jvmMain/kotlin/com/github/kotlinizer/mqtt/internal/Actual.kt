@@ -5,7 +5,8 @@ import com.github.kotlinizer.mqtt.MqttConnectionConfig
 import com.github.kotlinizer.mqtt.internal.connection.MqttConnection
 import kotlinx.coroutines.Dispatchers
 
-internal actual val mqttDispatcher = Dispatchers.IO
+internal actual val Dispatchers.MqttDispatcher
+    get() = IO
 
 internal actual fun createConnection(
     connectionConfig: MqttConnectionConfig,
