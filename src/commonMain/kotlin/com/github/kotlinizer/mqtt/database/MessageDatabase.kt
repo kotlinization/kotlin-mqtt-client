@@ -9,13 +9,13 @@ import com.github.kotlinizer.mqtt.internal.connection.packet.sent.Subscribe
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-@Suppress("UNCHECKED_CAST")
 abstract class MessageDatabase(
     protected val logger: Logger?
 ) {
 
     private val messageMutex = Mutex()
 
+    @Suppress("UNCHECKED_CAST")
     internal suspend fun <T : MqttPacket> savePacket(mqttPacket: T): T {
         return when (mqttPacket) {
             is Publish -> savePublish(mqttPacket)

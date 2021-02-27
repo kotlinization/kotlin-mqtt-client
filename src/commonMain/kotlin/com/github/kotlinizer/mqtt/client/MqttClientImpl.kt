@@ -130,15 +130,13 @@ private class MqttClientImpl(
     override suspend fun subscribe(topic: String, qos: MqttQos): Flow<MqttMessage> {
         publishPacket(Subscribe(0, mapOf(topic to MqttQos.AT_LEAST_ONCE)))
         return channelFlow {
-            launch(Dispatchers.MqttDispatcher) {
-                packetSharedFlow.filterIsInstance<Publish>()
-                    .filter {
-                        // TODO Add topic matcher
-                        it.mqttMessage.topic == topic
-                    }.collect {
-                        send(it.mqttMessage)
-                    }
-            }
+            packetSharedFlow.filterIsInstance<Publish>()
+                .filter {
+                    // TODO Add topic matcher
+                    it.mqttMessage.topic == topic
+                }.collect {
+                    send(it.mqttMessage)
+                }
         }
     }
 
@@ -161,7 +159,6 @@ private class MqttClientImpl(
             is ConnAck -> connAckReceived()
             is PubAck, is PubComp -> packetCompleted(mqttReceivedPacket)
             is PubRec -> pubRecReceived(mqttReceivedPacket)
-            else -> logger?.e { "Invalid packet received: $mqttReceivedPacket" }
         }
     }
 

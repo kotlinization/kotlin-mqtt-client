@@ -3,7 +3,6 @@ package com.github.kotlinizer.mqtt.io
 import kotlinx.coroutines.channels.ReceiveChannel
 
 interface Input {
-
     suspend fun read(): Byte
 }
 

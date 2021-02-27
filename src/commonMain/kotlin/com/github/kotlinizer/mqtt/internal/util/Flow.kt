@@ -7,8 +7,8 @@ import kotlinx.coroutines.flow.*
 
 internal fun Flow<MqttConnection?>.createPacketFlow(
     localScope: CoroutineScope
-): SharedFlow<MqttReceivedPacket> {
+): Flow<MqttReceivedPacket> {
     return filterNotNull()
         .flatMapLatest { it.packetFlow }
-        .shareIn(localScope, SharingStarted.WhileSubscribed())
+        .shareIn(localScope, SharingStarted.Lazily)
 }

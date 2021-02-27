@@ -57,7 +57,6 @@ class ExtensionKtTest {
         blockThread {
             repeat(10_000) { number ->
                 val bytes = number.toEncodedBytes()
-//                val stream = flowOf(*bytes.toTypedArray())//.broadcastIn(this).openSubscription()
                 val decoded = bytes.toInput().receiveDecodedInt()
                 assertEquals(number, decoded)
             }

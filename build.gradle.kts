@@ -2,8 +2,6 @@ plugins {
     kotlin("multiplatform") version "1.4.30"
 }
 
-val coroutinesVersion = "1.4.2"
-
 repositories {
     mavenCentral()
     maven { setUrl("https://jitpack.io") }
@@ -14,7 +12,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2")
                 implementation("com.github.kotlinizer.mpp-ktx:mpp-ktx:v0.1.3")
             }
         }
