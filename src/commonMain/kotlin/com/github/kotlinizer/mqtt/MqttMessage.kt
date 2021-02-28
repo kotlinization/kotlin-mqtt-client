@@ -4,7 +4,7 @@ import com.github.kotlinizer.mqtt.MqttQos.*
 
 data class MqttMessage(
     val topic: String,
-    val message: String,
+    val content: String,
     /**
      * Can be [AT_MOST_ONCE], [AT_LEAST_ONCE] or [EXACTLY_ONCE]
      */
@@ -16,6 +16,6 @@ data class MqttMessage(
             : this(topic, message.toByteArray().decodeToString(), qos, retain)
 
     internal val messageBytes by lazy {
-        message.encodeToByteArray().asList()
+        content.encodeToByteArray().asList()
     }
 }

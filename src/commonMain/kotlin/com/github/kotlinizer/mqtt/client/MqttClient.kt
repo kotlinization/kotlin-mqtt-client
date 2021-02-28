@@ -1,5 +1,6 @@
 package com.github.kotlinizer.mqtt.client
 
+import com.github.kotlinizer.mqtt.MqttConnectionConfig
 import com.github.kotlinizer.mqtt.MqttConnectionStatus
 import com.github.kotlinizer.mqtt.MqttMessage
 import com.github.kotlinizer.mqtt.MqttQos
@@ -10,7 +11,7 @@ interface MqttClient {
 
     val connectionStatusStateFlow: StateFlow<MqttConnectionStatus>
 
-    suspend fun connect()
+    suspend fun connect(connectionConfig: MqttConnectionConfig)
 
     suspend fun disconnect()
 

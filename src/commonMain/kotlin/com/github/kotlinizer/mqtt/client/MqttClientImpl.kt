@@ -16,17 +16,15 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 fun MqttClient(
-    connectionConfig: MqttConnectionConfig,
-    logger: Logger?,
-    messageDatabase: MessageDatabase = MemoryMessageDatabase(logger)
+    logger: Logger? = null,
+    messageDatabase: MessageDatabase = MemoryMessageDatabase(logger),
 ): MqttClient {
-    return MqttClientImpl(connectionConfig, logger, messageDatabase)
+    return MqttClientImpl(logger, messageDatabase)
 }
 
 private class MqttClientImpl(
-    val connectionConfig: MqttConnectionConfig,
     private val logger: Logger?,
-    private val messageDatabase: MessageDatabase = MemoryMessageDatabase(logger)
+    private val messageDatabase: MessageDatabase,
 ) : MqttClient {
 
     private var receivingJob: Job? = null
@@ -42,6 +40,7 @@ private class MqttClientImpl(
                 }
             } else {
                 receivingJob?.cancel()
+                pingRequestTracker.stopPinging()
             }
         }
 
@@ -65,19 +64,18 @@ private class MqttClientImpl(
         connectionMutableStateFlow.createPacketFlow(localScope)
     }
 
-    init {
+    private val pingRequestTracker by lazy {
         PingRequestTracker(
-            localScope,
-            connectionConfig,
-            connectionMutableStateFlow,
-            connectionStatusStateFlow,
-            this::errorOccurred
+            localScope = localScope,
+            logger = logger,
+            connectionFlow = connectionMutableStateFlow,
+            errorOccurred = this::errorOccurred
         ) {
             publishPacket(PingReq())
         }
     }
 
-    override suspend fun connect() {
+    override suspend fun connect(connectionConfig: MqttConnectionConfig) {
         try {
             connectionMutex.withLock {
                 if (connectionStatus != DISCONNECTED && connectionStatus != ERROR) return@withLock
@@ -94,6 +92,7 @@ private class MqttClientImpl(
 
                 connectionStatus = if (connAck.error == null) {
                     logger?.t { "Connection established, now active." }
+                    pingRequestTracker.startPinging(connectionConfig)
                     CONNECTED
                 } else {
                     logger?.e(connAck.error) { "Error ConnAck received." }
@@ -142,6 +141,7 @@ private class MqttClientImpl(
 
     private suspend fun publishPacket(packet: MqttSentPacket) {
         try {
+            logger?.t { "Publishing packet: $packet." }
             writePacket(packet)
         } catch (t: Throwable) {
             logger?.e(t) { "Unable to publish packet: $packet." }

@@ -18,12 +18,12 @@ class ClientCommunicationTest {
 
     @Test
     fun publishAndReceiveQoS0Message() = withBroker {
-        val client1 = MqttClient(connectionConfig, TestLogger("C1"))
-        val client2 = MqttClient(connectionConfig, TestLogger("C2"))
+        val client1 = MqttClient(TestLogger("C1"))
+        val client2 = MqttClient(TestLogger("C2"))
         val message = MqttMessage("test", "Test message.", MqttQos.AT_MOST_ONCE)
 
-        client1.connect()
-        client2.connect()
+        client1.connect(connectionConfig)
+        client2.connect(connectionConfig)
 
         val subscribeFlow = client2.subscribe("test")
         client1.publishMessage(message)
@@ -33,31 +33,31 @@ class ClientCommunicationTest {
 
     @Test
     fun publishAndReceiveQoS1Message() = withBroker {
-        val client1 = MqttClient(connectionConfig, TestLogger("C1"))
-        val client2 = MqttClient(connectionConfig, TestLogger("C2"))
+        val client1 = MqttClient(TestLogger("C1"))
+        val client2 = MqttClient(TestLogger("C2"))
         val message = MqttMessage("test", "Test message.", MqttQos.AT_LEAST_ONCE)
 
-        client1.connect()
-        client2.connect()
+        client1.connect(connectionConfig)
+        client2.connect(connectionConfig)
 
         val subscribeFlow = client2.subscribe("test")
         client1.publishMessage(message)
 
-        assertEquals(message, subscribeFlow.first())
+        assertEquals(message.copy(qos = MqttQos.AT_MOST_ONCE), subscribeFlow.first())
     }
 
     @Test
     fun publishAndReceiveQoS2Message() = withBroker {
-        val client1 = MqttClient(connectionConfig, TestLogger("C1"))
-        val client2 = MqttClient(connectionConfig, TestLogger("C2"))
+        val client1 = MqttClient(TestLogger("C1"))
+        val client2 = MqttClient(TestLogger("C2"))
         val message = MqttMessage("test", "Test message.", MqttQos.EXACTLY_ONCE)
 
-        client1.connect()
-        client2.connect()
+        client1.connect(connectionConfig)
+        client2.connect(connectionConfig)
 
         val subscribeFlow = client2.subscribe("test")
         client1.publishMessage(message)
 
-        assertEquals(message, subscribeFlow.first())
+        assertEquals(message.copy(qos = MqttQos.AT_MOST_ONCE), subscribeFlow.first())
     }
 }

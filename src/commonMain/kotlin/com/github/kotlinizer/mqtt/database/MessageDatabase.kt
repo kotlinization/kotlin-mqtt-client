@@ -64,6 +64,7 @@ abstract class MessageDatabase(
         return pubRel
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun <T : MqttPacket> T.updateIdentifiablePacket(identifier: Short): T {
         return when (this) {
             is Publish -> copy(packetIdentifier = identifier)

@@ -25,7 +25,10 @@ actual class Process actual constructor(private val commands: List<String>) {
 
 actual class TmpFile {
 
-    actual val path = get(getProperty("java.io.tmpdir"), currentTimeMillis().toString()).toAbsolutePath().toString()
+    actual val path = get(
+        getProperty("java.io.tmpdir"),
+        currentTimeMillis().toString()
+    ).toAbsolutePath().toString()
 
     private val file = File(path)
 
