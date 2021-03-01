@@ -7,29 +7,39 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.github.kotlinizer.mqtt.MqttConnectionConfig
+import com.github.kotlinizer.mqtt.client.MqttClient
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
-fun main() = Window(title = "Compose for Desktop", size = IntSize(300, 300)) {
-    val count = remember { mutableStateOf(0) }
+private val flowLogger = FlowLogger()
+private val mqttClient = MqttClient(flowLogger)
+
+fun main() = Window(title = "MQTT Client Sample") {
+    val scope = rememberCoroutineScope()
+    val connectionState = mqttClient.connectionStatusStateFlow.collectAsState()
+    val logs = flowLogger.map { it.joinToString(System.lineSeparator()) }.collectAsState("")
     MaterialTheme {
         Column(Modifier.fillMaxSize(), Arrangement.spacedBy(5.dp)) {
-            Button(modifier = Modifier.align(Alignment.CenterHorizontally),
+            Button(
+                modifier = Modifier.align(Alignment.CenterHorizontally),
                 onClick = {
-                    count.value++
-                }) {
-                Text(if (count.value == 0) "Hello World" else "Clicked ${count.value}!")
+                    scope.launch {
+                        mqttClient.connect(
+                            MqttConnectionConfig(serverUri = "tcp://localhost:1883")
+                        )
+                    }
+                }
+            ) {
+                Text("CONNECT")
             }
-            Button(modifier = Modifier.align(Alignment.CenterHorizontally),
-                onClick = {
-                    count.value = 0
-                }) {
-                Text("Reset")
-            }
+            Text(connectionState.value.name)
+            Text(logs.value)
         }
     }
 }
