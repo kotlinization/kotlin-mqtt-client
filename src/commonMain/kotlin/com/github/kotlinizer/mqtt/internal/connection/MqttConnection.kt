@@ -1,5 +1,6 @@
 package com.github.kotlinizer.mqtt.internal.connection
 
+import com.github.kotlinizer.mppktx.coroutines.throwIfCanceled
 import com.github.kotlinizer.mqtt.Logger
 import com.github.kotlinizer.mqtt.MqttConnectionConfig
 import com.github.kotlinizer.mqtt.internal.connection.packet.received.MqttReceivedPacket
@@ -40,8 +41,10 @@ internal abstract class MqttConnection(
                     input.getPacket().also {
                         packetTransitSharedFlow.emit(Unit)
                     }
-                } catch (e: Exception) {
-                    logger?.e(e) { "Error while receiving packet." }
+                } catch (e: Throwable) {
+                    logger?.e(e.throwIfCanceled()) {
+                        "Error while receiving packet."
+                    }
                     disconnectAndClear()
                     return@launch
                 }

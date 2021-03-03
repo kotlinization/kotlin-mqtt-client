@@ -24,6 +24,7 @@ class FlowLogger private constructor(
         get() = timeFormatter.format(Instant.now())
 
     override fun logError(message: String, throwable: Throwable?) {
+        throwable?.printStackTrace(System.out)
         logs.value += "$currentTime [E] $message " +
                 "${throwable?.stackTraceToString()?.replace("\t", "          ")}"
 

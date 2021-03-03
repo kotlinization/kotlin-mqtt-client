@@ -7,8 +7,10 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +28,7 @@ fun main() = Window(title = "MQTT Client Sample") {
     val scope = rememberCoroutineScope()
     val connectionState = mqttClient.connectionStatusStateFlow.collectAsState()
     val logs = flowLogger.map { it.reversed() }.collectAsState(emptyList())
+    var topicString = mutableStateOf("")
     MaterialTheme {
         Column(Modifier.fillMaxSize(), Arrangement.spacedBy(5.dp)) {
             Row(
@@ -42,7 +45,8 @@ fun main() = Window(title = "MQTT Client Sample") {
                             )
                         }
                     },
-                    enabled = connectionState.value != MqttConnectionStatus.CONNECTED
+                    enabled = connectionState.value == MqttConnectionStatus.DISCONNECTED ||
+                            connectionState.value == MqttConnectionStatus.ERROR
                 ) {
                     Text("CONNECT")
                 }
@@ -55,6 +59,24 @@ fun main() = Window(title = "MQTT Client Sample") {
                     enabled = connectionState.value == MqttConnectionStatus.CONNECTED
                 ) {
                     Text("DISCONNECT")
+                }
+            }
+            Row {
+                OutlinedTextField(
+                    value = topicString.value,
+                    onValueChange = { topicString.value = it },
+                    label = { Text("Topic name") },
+                    enabled = connectionState.value == MqttConnectionStatus.CONNECTED
+                )
+                Button(
+                    onClick = {
+                        scope.launch {
+                            mqttClient.subscribe(topicString.value)
+                        }
+                    },
+                    enabled = connectionState.value == MqttConnectionStatus.CONNECTED
+                ) {
+                    Text("SUBSCRIBE")
                 }
             }
             LazyColumn(
