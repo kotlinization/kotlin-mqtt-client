@@ -12,7 +12,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.3")
                 implementation("com.github.kotlinizer.mpp-ktx:mpp-ktx:v0.1.3")
             }
         }

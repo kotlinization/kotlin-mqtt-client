@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.kotlinizer.mqtt.MqttConnectionConfig
 import com.github.kotlinizer.mqtt.MqttConnectionStatus
+import com.github.kotlinizer.mqtt.MqttMessage
 import com.github.kotlinizer.mqtt.client.MqttClient
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -28,7 +29,9 @@ fun main() = Window(title = "MQTT Client Sample") {
     val scope = rememberCoroutineScope()
     val connectionState = mqttClient.connectionStatusStateFlow.collectAsState()
     val logs = flowLogger.map { it.reversed() }.collectAsState(emptyList())
-    var topicString = mutableStateOf("")
+    val subscribeTopic = mutableStateOf("")
+    val publishTopic = mutableStateOf("")
+    val publishContent = mutableStateOf("")
     MaterialTheme {
         Column(Modifier.fillMaxSize(), Arrangement.spacedBy(5.dp)) {
             Row(
@@ -63,20 +66,49 @@ fun main() = Window(title = "MQTT Client Sample") {
             }
             Row {
                 OutlinedTextField(
-                    value = topicString.value,
-                    onValueChange = { topicString.value = it },
+                    value = subscribeTopic.value,
+                    onValueChange = { subscribeTopic.value = it },
                     label = { Text("Topic name") },
                     enabled = connectionState.value == MqttConnectionStatus.CONNECTED
                 )
                 Button(
                     onClick = {
                         scope.launch {
-                            mqttClient.subscribe(topicString.value)
+                            mqttClient.subscribe(subscribeTopic.value)
                         }
                     },
                     enabled = connectionState.value == MqttConnectionStatus.CONNECTED
                 ) {
                     Text("SUBSCRIBE")
+                }
+            }
+            Row {
+                OutlinedTextField(
+                    value = publishTopic.value,
+                    onValueChange = { publishTopic.value = it },
+                    label = { Text("Topic name") },
+                    enabled = connectionState.value == MqttConnectionStatus.CONNECTED
+                )
+                OutlinedTextField(
+                    value = publishContent.value,
+                    onValueChange = { publishContent.value = it },
+                    label = { Text("Message") },
+                    enabled = connectionState.value == MqttConnectionStatus.CONNECTED
+                )
+                Button(
+                    onClick = {
+                        scope.launch {
+                            mqttClient.publishMessage(
+                                MqttMessage(
+                                    publishTopic.value,
+                                    publishContent.value
+                                )
+                            )
+                        }
+                    },
+                    enabled = connectionState.value == MqttConnectionStatus.CONNECTED
+                ) {
+                    Text("SEND")
                 }
             }
             LazyColumn(

@@ -5,11 +5,6 @@ import com.github.kotlinizer.mqtt.internal.util.receiveDecodedInt
 import com.github.kotlinizer.mqtt.internal.util.toEncodedBytes
 import com.github.kotlinizer.mqtt.internal.util.toShort
 import com.github.kotlinizer.mqtt.io.toInput
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.ConflatedBroadcastChannel
-import kotlinx.coroutines.flow.broadcastIn
-import kotlinx.coroutines.flow.flowOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

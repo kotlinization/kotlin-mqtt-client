@@ -141,7 +141,6 @@ private class MqttClientImpl(
 
     private suspend fun publishPacket(packet: MqttSentPacket) {
         try {
-            logger?.t { "Publishing packet: $packet." }
             writePacket(packet)
         } catch (t: Throwable) {
             logger?.e(t) { "Unable to publish packet: $packet." }

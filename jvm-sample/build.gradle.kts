@@ -13,7 +13,7 @@ repositories {
 dependencies {
     implementation(compose.desktop.currentOs)
     implementation(project(":"))
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2")
+//    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.3")
 }
 
 compose.desktop {
