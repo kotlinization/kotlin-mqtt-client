@@ -183,6 +183,7 @@ private class MqttClientImpl(
     }
 
     private suspend fun errorOccurred() {
+        logger?.e { "Ping response NOT received." }
         connectionMutex.withLock {
             connectionMutableStateFlow.value?.disconnectAndClear()
             connectionMutableStateFlow.value = null
