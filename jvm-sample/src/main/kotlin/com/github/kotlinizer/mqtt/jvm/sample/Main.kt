@@ -2,9 +2,6 @@ package com.github.kotlinizer.mqtt.jvm.sample
 
 import androidx.compose.desktop.Window
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.Button
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedTextField
@@ -13,13 +10,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.github.kotlinizer.mqtt.MqttConnectionConfig
 import com.github.kotlinizer.mqtt.MqttConnectionStatus
 import com.github.kotlinizer.mqtt.MqttMessage
 import com.github.kotlinizer.mqtt.client.MqttClient
+import com.github.kotlinizer.mqtt.jvm.sample.screen.logsColumn
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 private val flowLogger = FlowLogger()
@@ -27,13 +23,14 @@ private val mqttClient = MqttClient(flowLogger)
 
 fun main() = Window(title = "MQTT Client Sample") {
     val scope = rememberCoroutineScope()
-    val connectionState = mqttClient.connectionStatusStateFlow.collectAsState()
+    val connectionState by mqttClient.connectionStatusStateFlow.collectAsState()
+    val logs by flowLogger.collectAsState()
     MaterialTheme {
-        Column(Modifier.fillMaxSize(), Arrangement.spacedBy(5.dp)) {
-            connectRow(scope, connectionState)
-            subscribeRow(scope, connectionState)
-            publishRow(scope, connectionState)
-            logsColumn()
+        Column(Modifier.fillMaxSize().padding(8.dp), Arrangement.spacedBy(16.dp)) {
+            Column { connectRow(scope, connectionState) }
+            Column { subscribeRow(scope, connectionState) }
+            Column { publishRow(scope, connectionState) }
+            Column { logsColumn(logs, flowLogger::clearLogs) }
         }
     }
 }
@@ -41,7 +38,7 @@ fun main() = Window(title = "MQTT Client Sample") {
 @Composable
 private fun connectRow(
     scope: CoroutineScope,
-    connectionState: State<MqttConnectionStatus>
+    connectionState: MqttConnectionStatus
 ) {
     divider("Connection")
     Row(
@@ -49,7 +46,7 @@ private fun connectRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(connectionState.value.name)
+        Text(connectionState.name)
         Button(
             onClick = {
                 scope.launch {
@@ -58,8 +55,8 @@ private fun connectRow(
                     )
                 }
             },
-            enabled = connectionState.value == MqttConnectionStatus.DISCONNECTED ||
-                    connectionState.value == MqttConnectionStatus.ERROR
+            enabled = connectionState == MqttConnectionStatus.DISCONNECTED ||
+                    connectionState == MqttConnectionStatus.ERROR
         ) {
             Text("CONNECT")
         }
@@ -69,7 +66,7 @@ private fun connectRow(
                     mqttClient.disconnect()
                 }
             },
-            enabled = connectionState.value == MqttConnectionStatus.CONNECTED
+            enabled = connectionState == MqttConnectionStatus.CONNECTED
         ) {
             Text("DISCONNECT")
         }
@@ -79,27 +76,27 @@ private fun connectRow(
 @Composable
 fun subscribeRow(
     scope: CoroutineScope,
-    connectionState: State<MqttConnectionStatus>
+    connectionState: MqttConnectionStatus
 ) {
-    val subscribeTopic = remember { mutableStateOf("") }
+    var subscribeTopic by remember { mutableStateOf("") }
     divider("Subscribe")
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         OutlinedTextField(
-            value = subscribeTopic.value,
-            onValueChange = { subscribeTopic.value = it },
+            value = subscribeTopic,
+            onValueChange = { subscribeTopic = it },
             label = { Text("Topic name") },
-            enabled = connectionState.value == MqttConnectionStatus.CONNECTED
+            enabled = connectionState == MqttConnectionStatus.CONNECTED
         )
         Button(
             onClick = {
                 scope.launch {
-                    mqttClient.subscribe(subscribeTopic.value)
+                    mqttClient.subscribe(subscribeTopic)
                 }
             },
-            enabled = connectionState.value == MqttConnectionStatus.CONNECTED
+            enabled = connectionState == MqttConnectionStatus.CONNECTED
         ) {
             Text("SUBSCRIBE")
         }
@@ -109,39 +106,36 @@ fun subscribeRow(
 @Composable
 fun publishRow(
     scope: CoroutineScope,
-    connectionState: State<MqttConnectionStatus>
+    connectionState: MqttConnectionStatus
 ) {
-    val publishTopic = remember { mutableStateOf("") }
-    val publishContent = remember { mutableStateOf("") }
+    var publishTopic by remember { mutableStateOf("") }
+    var publishContent by remember { mutableStateOf("") }
     divider("Publish")
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         OutlinedTextField(
-            value = publishTopic.value,
-            onValueChange = { publishTopic.value = it },
+            value = publishTopic,
+            onValueChange = { publishTopic = it },
             label = { Text("Topic name") },
-            enabled = connectionState.value == MqttConnectionStatus.CONNECTED
+            enabled = connectionState == MqttConnectionStatus.CONNECTED
         )
         OutlinedTextField(
-            value = publishContent.value,
-            onValueChange = { publishContent.value = it },
+            value = publishContent,
+            onValueChange = { publishContent = it },
             label = { Text("Message") },
-            enabled = connectionState.value == MqttConnectionStatus.CONNECTED
+            enabled = connectionState == MqttConnectionStatus.CONNECTED
         )
         Button(
             onClick = {
                 scope.launch {
                     mqttClient.publishMessage(
-                        MqttMessage(
-                            publishTopic.value,
-                            publishContent.value
-                        )
+                        MqttMessage(publishTopic, publishContent)
                     )
                 }
             },
-            enabled = connectionState.value == MqttConnectionStatus.CONNECTED
+            enabled = connectionState == MqttConnectionStatus.CONNECTED
         ) {
             Text("SEND")
         }
@@ -149,18 +143,6 @@ fun publishRow(
 }
 
 @Composable
-fun logsColumn() {
-    val logs = flowLogger.map { it.reversed() }.collectAsState(emptyList())
-    divider("Logs")
-    LazyColumn(
-        reverseLayout = false,
-        state = LazyListState()
-    ) {
-        items(logs.value) { log -> Text(log) }
-    }
-}
-
-@Composable
 fun divider(name: String) {
-    Text(name, fontSize = 10.sp)
+    Text(name, style = MaterialTheme.typography.caption)
 }
