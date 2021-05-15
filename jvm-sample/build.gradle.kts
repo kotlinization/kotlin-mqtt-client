@@ -1,6 +1,6 @@
 plugins {
     kotlin("jvm")
-    id("org.jetbrains.compose") version "0.3.1"
+    id("org.jetbrains.compose") version "0.3.2"
 }
 
 repositories {
@@ -13,7 +13,6 @@ repositories {
 dependencies {
     implementation(compose.desktop.currentOs)
     implementation(project(":"))
-//    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.3")
 }
 
 compose.desktop {
