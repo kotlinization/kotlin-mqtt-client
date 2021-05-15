@@ -35,6 +35,7 @@ internal fun Short.toByteList(): List<Byte> {
     )
 }
 
+@OptIn(ExperimentalUnsignedTypes::class)
 internal fun List<Byte>.toShort(): Short {
     if (size < 2) throw IllegalArgumentException("List must have at least 2 elements.")
     return (get(0).toInt().shl(8).toShort() + get(1).toUByte().toShort()).toShort()

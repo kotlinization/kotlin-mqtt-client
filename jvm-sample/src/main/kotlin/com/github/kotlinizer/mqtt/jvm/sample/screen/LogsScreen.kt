@@ -26,8 +26,11 @@ fun logsColumn(logs: List<Log>, onClearLogs: () -> Unit) {
     }
 
     divider("Logs")
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(onClick = onClearLogs){
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Button(onClick = onClearLogs) {
             Text("Clear logs")
         }
         Text("Level")

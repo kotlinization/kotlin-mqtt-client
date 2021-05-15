@@ -130,9 +130,7 @@ fun publishRow(
         Button(
             onClick = {
                 scope.launch {
-                    mqttClient.publishMessage(
-                        MqttMessage(publishTopic, publishContent)
-                    )
+                    mqttClient.publishMessage(MqttMessage(publishTopic, publishContent))
                 }
             },
             enabled = connectionState == MqttConnectionStatus.CONNECTED
