@@ -47,28 +47,48 @@ private fun connectRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(connectionState.name)
-        Button(
-            onClick = {
-                scope.launch {
-                    mqttClient.connect(
-                        MqttConnectionConfig(serverUri = "tcp://localhost:1883")
-                    )
+        when (connectionState) {
+            MqttConnectionStatus.CONNECTING -> {
+                Button({}, enabled = false) {
+                    Text("CONNECTING")
                 }
-            },
-            enabled = connectionState == MqttConnectionStatus.DISCONNECTED ||
-                    connectionState == MqttConnectionStatus.ERROR
-        ) {
-            Text("CONNECT")
-        }
-        Button(
-            onClick = {
-                scope.launch {
-                    mqttClient.disconnect()
+            }
+            MqttConnectionStatus.ESTABLISHING -> {
+                Button({}, enabled = false) {
+                    Text("ESTABLISHING")
                 }
-            },
-            enabled = connectionState == MqttConnectionStatus.CONNECTED
-        ) {
-            Text("DISCONNECT")
+            }
+            MqttConnectionStatus.CONNECTED -> {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            mqttClient.disconnect()
+                        }
+                    }
+                ) {
+                    Text("DISCONNECT")
+                }
+            }
+            MqttConnectionStatus.DISCONNECTING -> {
+                Button({}, enabled = false) {
+                    Text("DISCONNECTING")
+                }
+            }
+            MqttConnectionStatus.DISCONNECTED, MqttConnectionStatus.ERROR -> {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            mqttClient.connect(
+                                MqttConnectionConfig(serverUri = "tcp://localhost:1883")
+                            )
+                        }
+                    },
+                    enabled = connectionState == MqttConnectionStatus.DISCONNECTED ||
+                            connectionState == MqttConnectionStatus.ERROR
+                ) {
+                    Text("CONNECT")
+                }
+            }
         }
     }
 }

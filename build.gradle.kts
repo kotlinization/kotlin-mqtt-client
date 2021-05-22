@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("multiplatform") version "1.4.32"
+    kotlin("multiplatform") version "1.5.0"
 }
 
 repositories {
@@ -31,12 +31,5 @@ kotlin {
                 implementation(kotlin("test-junit"))
             }
         }
-    }
-}
-
-tasks.withType<KotlinCompile>().all {
-    kotlinOptions {
-        // TODO remove this with kotlin version > 1.5
-        jvmTarget = "1.8"
     }
 }
