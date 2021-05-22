@@ -4,11 +4,13 @@ import com.github.kotlinizer.mqtt.*
 import com.github.kotlinizer.mqtt.MqttConnectionStatus.*
 import com.github.kotlinizer.mqtt.database.MemoryMessageDatabase
 import com.github.kotlinizer.mqtt.database.MessageDatabase
-import com.github.kotlinizer.mqtt.internal.*
+import com.github.kotlinizer.mqtt.internal.MqttDispatcher
+import com.github.kotlinizer.mqtt.internal.PingRequestTracker
 import com.github.kotlinizer.mqtt.internal.connection.MqttConnection
 import com.github.kotlinizer.mqtt.internal.connection.packet.Publish
 import com.github.kotlinizer.mqtt.internal.connection.packet.received.*
 import com.github.kotlinizer.mqtt.internal.connection.packet.sent.*
+import com.github.kotlinizer.mqtt.internal.createConnection
 import com.github.kotlinizer.mqtt.internal.util.createPacketFlow
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -128,20 +130,17 @@ private class MqttClientImpl(
 
     override suspend fun subscribe(topic: String, qos: MqttQos): Flow<MqttMessage> {
         publishPacket(Subscribe(0, mapOf(topic to MqttQos.AT_LEAST_ONCE)))
-        return channelFlow {
-            packetSharedFlow.filterIsInstance<Publish>()
-                .filter {
-                    // TODO Add topic matcher
-                    it.mqttMessage.topic == topic
-                }.collect {
-                    send(it.mqttMessage)
-                }
-        }
+        return packetSharedFlow.filterIsInstance<Publish>()
+            .filter {
+                // TODO Add topic matcher
+                it.mqttMessage.topic == topic
+            }.map {
+                it.mqttMessage
+            }
     }
 
     private suspend fun publishPacket(packet: MqttSentPacket) {
         try {
-            logger?.t { "Publishing packet: $packet." }
             writePacket(packet)
         } catch (t: Throwable) {
             logger?.e(t) { "Unable to publish packet: $packet." }
@@ -184,6 +183,7 @@ private class MqttClientImpl(
     }
 
     private suspend fun errorOccurred() {
+        logger?.e { "Ping response NOT received." }
         connectionMutex.withLock {
             connectionMutableStateFlow.value?.disconnectAndClear()
             connectionMutableStateFlow.value = null

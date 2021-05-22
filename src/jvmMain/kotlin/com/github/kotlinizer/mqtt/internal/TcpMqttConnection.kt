@@ -31,7 +31,9 @@ internal class TcpMqttConnection(
         get() = channelFlow {
             withContext(IO) {
                 while (isActive) {
-                    val byte = inputStream.read().toByte()
+                    val byte = runCatching {
+                        inputStream.read().toByte()
+                    }.getOrNull() ?: return@withContext
                     if (byte != (-1).toByte()) {
                         send(byte)
                     }
