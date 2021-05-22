@@ -11,6 +11,7 @@ import com.github.kotlinizer.mqtt.internal.connection.packet.Publish
 import com.github.kotlinizer.mqtt.internal.connection.packet.received.*
 import com.github.kotlinizer.mqtt.internal.connection.packet.sent.*
 import com.github.kotlinizer.mqtt.internal.createConnection
+import com.github.kotlinizer.mqtt.topic.TopicMatcher
 import com.github.kotlinizer.mqtt.internal.util.createPacketFlow
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -77,6 +78,10 @@ private class MqttClientImpl(
         }
     }
 
+    private val topicMatcher by lazy {
+        TopicMatcher()
+    }
+
     override suspend fun connect(connectionConfig: MqttConnectionConfig) {
         try {
             connectionMutex.withLock {
@@ -131,12 +136,8 @@ private class MqttClientImpl(
     override suspend fun subscribe(topic: String, qos: MqttQos): Flow<MqttMessage> {
         publishPacket(Subscribe(0, mapOf(topic to MqttQos.AT_LEAST_ONCE)))
         return packetSharedFlow.filterIsInstance<Publish>()
-            .filter {
-                // TODO Add topic matcher
-                it.mqttMessage.topic == topic
-            }.map {
-                it.mqttMessage
-            }
+            .filter { topicMatcher.matches(topic, it.mqttMessage.topic) }
+            .map { it.mqttMessage }
     }
 
     private suspend fun publishPacket(packet: MqttSentPacket) {
