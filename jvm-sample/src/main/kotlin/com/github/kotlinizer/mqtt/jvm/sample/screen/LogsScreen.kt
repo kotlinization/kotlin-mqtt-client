@@ -15,17 +15,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.github.kotlinizer.mqtt.Logger
 import com.github.kotlinizer.mqtt.jvm.sample.Log
-import com.github.kotlinizer.mqtt.jvm.sample.divider
-
 
 @Composable
-fun logsColumn(logs: List<Log>, onClearLogs: () -> Unit) {
+fun LogsColumn(logs: List<Log>, onClearLogs: () -> Unit) {
     var filteredLevel by remember { mutableStateOf(Logger.Level.TRACE.ordinal) }
     val filteredLogs = logs.filter {
         it.level.ordinal <= filteredLevel
     }
 
-    divider("Logs")
+    Text(
+        text = "Logs",
+        style = MaterialTheme.typography.caption
+    )
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)

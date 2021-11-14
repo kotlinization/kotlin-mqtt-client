@@ -33,10 +33,8 @@ class FlowLogger private constructor(
 
     override fun logError(message: String, throwable: Throwable?) {
         throwable?.printStackTrace(System.out)
-        logs.value += Log(
-            level = Level.ERROR,
-            message = " $message \" +\n${throwable?.stackTraceToString()?.replace("\t", "          ")}\""
-        )
+        val msg = " $message \" +\n${throwable?.stackTraceToString()?.replace("\t", "          ")}\""
+        logs.value += Log(Level.ERROR, msg)
     }
 
     override fun logDebug(message: String) {

@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("multiplatform") version "1.5.0"
+    kotlin("multiplatform") version "1.5.31"
 }
 
 repositories {
@@ -14,7 +14,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.0")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.2")
                 implementation("com.github.kotlinizer.mpp-ktx:mpp-ktx:v0.1.4")
             }
         }
