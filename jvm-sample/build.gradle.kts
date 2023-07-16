@@ -1,12 +1,11 @@
 plugins {
     kotlin("jvm")
-    id("org.jetbrains.compose") version "1.3.1"
+    alias(libs.plugins.compose)
 }
 
 repositories {
     mavenCentral()
     maven { setUrl("https://jitpack.io") }
-    jcenter()
     google()
     maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
 }

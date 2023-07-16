@@ -1,0 +1,16 @@
+[versions]
+
+# Plugins
+kotlin = "1.8.0"
+composePlugin = "1.3.1"
+
+#Libraries
+kotlinxCoroutines = "1.6.4"
+mppKtx = "0.1.4"
+
+[libraries]
+kotlinxCoroutinesCore =  { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+mppKtx =  { module = "com.github.kotlinizer.mpp-ktx:mpp-ktx", version.ref = "mppKtx" }
+
+[plugins]
+compose = { id = "org.jetbrains.compose", version.ref = "composePlugin" }

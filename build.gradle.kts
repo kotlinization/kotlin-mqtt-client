@@ -1,7 +1,5 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
-    kotlin("multiplatform") version "1.8.0"
+    kotlin("multiplatform") version libs.versions.kotlin
 }
 
 repositories {
@@ -14,15 +12,14 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
-                implementation("com.github.kotlinizer.mpp-ktx:mpp-ktx:v0.1.4")
+                implementation(libs.kotlinxCoroutinesCore)
+                implementation(libs.mppKtx)
             }
         }
         val commonTest by getting {
             dependencies {
                 implementation(kotlin("test-common"))
                 implementation(kotlin("test-annotations-common"))
-                implementation("io.mockk:mockk:1.10.0")
             }
         }
         val jvmMain by getting { }
