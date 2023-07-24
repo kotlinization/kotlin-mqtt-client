@@ -25,7 +25,7 @@ jobs:
         with:
             java-version: '17'
             distribution: 'zulu'
-      - uses: gradle/gradle-build-action@v2.6.0
+      - uses: gradle/gradle-build-action@v2.6.1
         # Don't spend more than 5m rehydrating the cache. Otherwise just move on.
         timeout-minutes: 5
         continue-on-error: true
