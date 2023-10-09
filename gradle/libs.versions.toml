@@ -2,7 +2,7 @@
 
 # Plugins
 kotlin = "1.8.0"
-composePlugin = "1.4.3"
+composePlugin = "1.5.3"
 
 #Libraries
 kotlinxCoroutines = "1.7.3"
