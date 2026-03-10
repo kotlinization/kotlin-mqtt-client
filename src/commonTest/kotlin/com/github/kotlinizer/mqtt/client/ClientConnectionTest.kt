@@ -3,15 +3,20 @@ package com.github.kotlinizer.mqtt.client
 import com.github.kotlinizer.mqtt.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import org.junit.Rule
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class ClientConnectionTest {
 
+    @get:Rule
+    val mqttBrokerRule = MqttBrokerRule()
+
     private val logger: Logger = TestLogger()
 
     private val connectionConfig = MqttConnectionConfig(
-        serverUri = "tcp://test.mosquitto.org:1883",
+        clientId = "test_client",
+        serverUri = "tcp://localhost:1883",
         connectionTimeout = 5,
         keepAlive = 5
     )

@@ -1,5 +1,6 @@
 package com.github.kotlinizer.mqtt.client
 
+import com.github.kotlinizer.mqtt.MqttBrokerRule
 import com.github.kotlinizer.mqtt.MqttConnectionConfig
 import com.github.kotlinizer.mqtt.MqttMessage
 import com.github.kotlinizer.mqtt.MqttQos
@@ -7,6 +8,7 @@ import com.github.kotlinizer.mqtt.TestLogger
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
+import org.junit.Rule
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -17,8 +19,19 @@ class ClientCommunicationTest {
         private const val MQTT_TEST_TOPIC = "mqtt_test"
     }
 
-    private val connectionConfig = MqttConnectionConfig(
-        serverUri = "tcp://test.mosquitto.org:1883",
+    @get:Rule
+    val mqttBrokerRule = MqttBrokerRule()
+
+    private val connectionConfig1 = MqttConnectionConfig(
+        clientId = "test_client_1",
+        serverUri = "tcp://localhost:1883",
+        connectionTimeout = 5,
+        keepAlive = 5
+    )
+
+    private val connectionConfig2 = MqttConnectionConfig(
+        clientId = "test_client_2",
+        serverUri = "tcp://localhost:1883",
         connectionTimeout = 5,
         keepAlive = 5
     )
@@ -29,8 +42,8 @@ class ClientCommunicationTest {
         val client2 = MqttClient(TestLogger("C2"))
         val message = MqttMessage(MQTT_TEST_TOPIC, "Test message.", MqttQos.AT_MOST_ONCE)
 
-        client1.connect(connectionConfig)
-        client2.connect(connectionConfig)
+        client1.connect(connectionConfig1)
+        client2.connect(connectionConfig2)
 
         val subscribeFlow = client2.subscribe(MQTT_TEST_TOPIC)
         client1.publishMessage(message)
@@ -44,8 +57,8 @@ class ClientCommunicationTest {
         val client2 = MqttClient(TestLogger("C2"))
         val message = MqttMessage(MQTT_TEST_TOPIC, "Test message.", MqttQos.AT_LEAST_ONCE)
 
-        client1.connect(connectionConfig)
-        client2.connect(connectionConfig)
+        client1.connect(connectionConfig1)
+        client2.connect(connectionConfig2)
 
         val subscribeFlow = client2.subscribe(MQTT_TEST_TOPIC)
         client1.publishMessage(message)
@@ -59,8 +72,8 @@ class ClientCommunicationTest {
         val client2 = MqttClient(TestLogger("C2"))
         val message = MqttMessage(MQTT_TEST_TOPIC, "Test message.", MqttQos.EXACTLY_ONCE)
 
-        client1.connect(connectionConfig)
-        client2.connect(connectionConfig)
+        client1.connect(connectionConfig1)
+        client2.connect(connectionConfig2)
 
         val subscribeFlow = client2.subscribe(MQTT_TEST_TOPIC)
         client1.publishMessage(message)
@@ -74,8 +87,8 @@ class ClientCommunicationTest {
         val client2 = MqttClient(TestLogger("C2"))
         val message = MqttMessage(MQTT_TEST_TOPIC, "Test message.", MqttQos.AT_MOST_ONCE)
 
-        client1.connect(connectionConfig)
-        client2.connect(connectionConfig)
+        client1.connect(connectionConfig1)
+        client2.connect(connectionConfig2)
 
         val subscribeFlow = client2.subscribe(MQTT_TEST_TOPIC)
         val emptyFlow = client2.subscribe("no_message")
