@@ -7,10 +7,12 @@ composePlugin = "1.5.10"
 #Libraries
 kotlinxCoroutines = "1.7.3"
 mppKtx = "0.1.4"
+moquette = "0.17"
 
 [libraries]
 kotlinxCoroutinesCore =  { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 mppKtx =  { module = "com.github.kotlinizer.mpp-ktx:mpp-ktx", version.ref = "mppKtx" }
+moquette = { module = "io.moquette:moquette-broker", version.ref = "moquette" }
 
 [plugins]
 compose = { id = "org.jetbrains.compose", version.ref = "composePlugin" }
