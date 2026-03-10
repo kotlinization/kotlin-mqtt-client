@@ -1,4 +1,4 @@
-plugins {
+ plugins {
     kotlin("multiplatform") version libs.versions.kotlin
 }
 
@@ -10,20 +10,20 @@ repositories {
 kotlin {
     jvm()
     sourceSets {
-        val commonMain by getting {
+        getByName("commonMain") {
             dependencies {
                 implementation(libs.kotlinxCoroutinesCore)
                 implementation(libs.mppKtx)
             }
         }
-        val commonTest by getting {
+        getByName("commonTest") {
             dependencies {
                 implementation(kotlin("test-common"))
                 implementation(kotlin("test-annotations-common"))
             }
         }
-        val jvmMain by getting { }
-        val jvmTest by getting {
+        getByName("jvmMain") { }
+        getByName("jvmTest") {
             dependencies {
                 implementation(kotlin("test-junit"))
                 implementation(libs.moquette)
