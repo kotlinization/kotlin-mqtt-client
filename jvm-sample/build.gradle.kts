@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm")
     alias(libs.plugins.compose)
+    alias(libs.plugins.kotlin.compose)
 }
 
 repositories {

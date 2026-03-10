@@ -1,6 +1,7 @@
 package com.github.kotlinizer.mqtt.jvm.sample
 
 import com.github.kotlinizer.mqtt.Logger
+import kotlinx.coroutines.ExperimentalForInheritanceCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.time.Instant
@@ -25,6 +26,7 @@ data class Log(
     }
 }
 
+@OptIn(ExperimentalForInheritanceCoroutinesApi::class)
 class FlowLogger private constructor(
     private val logs: MutableStateFlow<List<Log>>
 ) : Logger(Level.TRACE), StateFlow<List<Log>> by logs {
